@@ -1,75 +1,54 @@
-import type { GestureEvent, GestureSnapshot } from '../handTracking/GestureTypes';
-import { FINGER_NAMES } from '../handTracking/HandGeometry';
-import type { HandFrame } from '../handTracking/HandTypes';
+import type { TrackedHand } from "../handTracking/HandTypes";
+import type { GestureEval } from "../handTracking/GestureTypes";
+import type { GestureState } from "../handTracking/GestureTypes";
 
-export interface DebugStats {
-  status: string;
-  fps: number;
-  frame: HandFrame | null;
-  gesture: GestureSnapshot | null;
-}
-
-const EVENT_LOG_SIZE = 6;
-
-/** Text overlay for debug info (hands, FPS, gestures). */
 export class DebugHUD {
-  readonly element: HTMLDivElement;
-  private readonly events: string[] = [];
+  private readonly root: HTMLElement;
 
-  constructor(parent: HTMLElement) {
-    this.element = document.createElement('div');
-    this.element.className = 'debug-hud';
-    parent.appendChild(this.element);
+  constructor(root: HTMLElement) {
+    this.root = root;
   }
 
-  setLines(lines: string[]): void {
-    this.element.textContent = lines.join('\n');
+  setVisible(visible: boolean): void {
+    this.root.hidden = !visible;
   }
 
-  logEvent(event: GestureEvent): void {
-    const t = (event.timestampMs / 1000).toFixed(2);
-    this.events.unshift(`${t}s ${event.type.padEnd(9)} ${event.gesture.name}`);
-    this.events.length = Math.min(this.events.length, EVENT_LOG_SIZE);
+  render(args: {
+    hands: TrackedHand[];
+    fps: number;
+    gesture: GestureState;
+    evals: GestureEval[];
+    cameraError: string | null;
+  }): void {
+    const { hands, fps, gesture, evals, cameraError } = args;
+    const handLines = hands
+      .map((h, i) => `#${i + 1} ${h.handedness} · handedness ${(h.score * 100).toFixed(0)}%`)
+      .join("<br>") || "none";
+
+    const evalHtml = evals
+      .map((ev) => {
+        const checks = ev.checks
+          .map(
+            (c) =>
+              `<li class="${c.passed ? "ok" : "fail"}">${c.passed ? "✓" : "✗"} ${c.name} (${c.value.toFixed(2)}) — ${c.detail}</li>`,
+          )
+          .join("");
+        return `<div class="eval ${ev.passed ? "passed" : ""}"><strong>${ev.displayName}</strong> ${ev.score.toFixed(2)}
+          <ul>${checks}</ul></div>`;
+      })
+      .join("");
+
+    this.root.innerHTML = `
+      <div class="debug-title">Debug <span>press D to hide</span></div>
+      ${cameraError ? `<div class="debug-error">${cameraError}</div>` : ""}
+      <div>Hands: <strong>${hands.length}</strong></div>
+      <div>${handLines}</div>
+      <div>FPS: <strong>${fps.toFixed(0)}</strong></div>
+      <div>Candidate: ${gesture.candidate ?? "—"} · phase ${gesture.phase}</div>
+      <div>Confirmed: ${gesture.confirmed ?? "—"}</div>
+      <div>Hold: ${(gesture.holdProgress * 100).toFixed(0)}% · score ${gesture.score.toFixed(2)}</div>
+      <div class="hint">Keys: 1 Primary · 2 Secondary · 3 Domain · D debug</div>
+      ${evalHtml}
+    `;
   }
-
-  update({ status, fps, frame, gesture }: DebugStats): void {
-    const hands = frame?.hands ?? [];
-    const lines = [status, `FPS: ${fps.toFixed(0)}`, `Hands: ${hands.length}`];
-
-    // Finger states: ^ extended, v folded, ~ ambiguous (thumb index middle ring pinky).
-    for (const a of gesture?.hands ?? []) {
-      const fingers = FINGER_NAMES.map((f) => {
-        const e = a.fingers[f].extended;
-        return e >= 0.6 ? '^' : e <= 0.4 ? 'v' : '~';
-      }).join('');
-      const bends = FINGER_NAMES.map((f) => a.fingers[f].bendDeg.toFixed(0).padStart(3)).join(' ');
-      const conf = (a.hand.handednessScore * 100).toFixed(0);
-      lines.push(`  ${a.hand.handedness.padEnd(7)} ${conf.padStart(3)}%  TIMRP ${fingers}  bend°${bends}`);
-    }
-
-    if (gesture) {
-      lines.push('');
-      const name = gesture.active ? `${gesture.active.name} (${gesture.active.action})` : '-';
-      const candidate = gesture.phase === 'candidate' ? name : '-';
-      const confirmed = gesture.phase === 'confirmed' ? name : '-';
-      lines.push(`Candidate: ${candidate}`);
-      lines.push(`Confirmed: ${confirmed}`);
-      lines.push(`Hold: ${progressBar(gesture.holdProgress)} ${(gesture.holdProgress * 100).toFixed(0)}%`);
-      lines.push('Scores:');
-      for (const g of gesture.gestures) {
-        const cdText = g.cooldownMs > 0 ? `  debounce ${g.cooldownMs.toFixed(0)}ms` : '';
-        lines.push(`  ${g.definition.name.padEnd(23)} ${g.score.toFixed(2)}${cdText}`);
-      }
-    }
-
-    if (this.events.length > 0) {
-      lines.push('', 'Events:', ...this.events.map((e) => `  ${e}`));
-    }
-    this.setLines(lines);
-  }
-}
-
-function progressBar(progress: number, width = 12): string {
-  const filled = Math.round(progress * width);
-  return `[${'#'.repeat(filled)}${'.'.repeat(width - filled)}]`;
 }

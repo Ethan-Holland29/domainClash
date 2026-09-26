@@ -1,213 +1,90 @@
-export type CameraErrorKind =
-  | 'unsupported' // no getUserMedia (old browser or insecure context)
-  | 'permission-denied'
-  | 'not-found'
-  | 'in-use' // device busy / hardware error
-  | 'disconnected'
-  | 'no-frames' // stream opened but never produced video
-  | 'unknown';
+import { GameConfig } from "../config/GameConfig";
+
+export type CameraErrorKind = "permission" | "unavailable" | "unknown";
 
 export class CameraError extends Error {
   readonly kind: CameraErrorKind;
-  /** The exact browser error, e.g. "NotFoundError: Requested device not found". */
-  readonly browserError: string | null;
 
-  constructor(kind: CameraErrorKind, message: string, browserError: string | null = null) {
+  constructor(kind: CameraErrorKind, message: string) {
     super(message);
-    this.name = 'CameraError';
     this.kind = kind;
-    this.browserError = browserError;
   }
 }
 
-export interface CameraOptions {
-  width: number;
-  height: number;
-  /** Show the feed like a mirror (selfie view). */
-  mirrored: boolean;
-  /** How long to wait for the first frame before reporting an error. */
-  firstFrameTimeoutMs: number;
-}
-
-export const DEFAULT_CAMERA_OPTIONS: CameraOptions = {
-  width: 1280,
-  height: 720,
-  mirrored: true,
-  firstFrameTimeoutMs: 5000,
-};
-
-/** Owns the webcam stream and the <video> element. */
 export class CameraManager {
-  readonly video: HTMLVideoElement;
-  readonly options: CameraOptions;
-  /** Called if the stream ends unexpectedly (e.g. camera unplugged). */
-  onDisconnect: ((error: CameraError) => void) | null = null;
-
   private stream: MediaStream | null = null;
+  private generation = 0;
+  private readonly video: HTMLVideoElement;
 
-  constructor(video: HTMLVideoElement, options: Partial<CameraOptions> = {}) {
+  constructor(video: HTMLVideoElement) {
     this.video = video;
-    this.options = { ...DEFAULT_CAMERA_OPTIONS, ...options };
-    this.video.classList.toggle('mirrored', this.options.mirrored);
   }
 
-  get isRunning(): boolean {
-    return this.stream !== null;
-  }
-
-  /** Name of the active camera as reported by the browser. */
-  get label(): string {
-    return this.stream?.getVideoTracks()[0]?.label ?? '';
-  }
-
-  /** Native resolution of the stream (0 until metadata is loaded). */
-  get width(): number {
-    return this.video.videoWidth;
-  }
-
-  get height(): number {
-    return this.video.videoHeight;
-  }
-
-  /** True when the video has a decoded frame ready to be processed. */
-  get hasFrame(): boolean {
-    return this.video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
-  }
-
-  /** Starts the browser's camera (the one selected in the site's camera settings). */
   async start(): Promise<void> {
-    if (this.stream) this.stop();
+    if (this.isActive()) return;
+    this.stop();
+    const generation = this.generation;
     if (!navigator.mediaDevices?.getUserMedia) {
-      throw new CameraError(
-        'unsupported',
-        'Camera API unavailable. Use a modern browser over https:// or http://localhost.',
-      );
+      throw new CameraError("unavailable", "This browser does not support webcam access.");
     }
 
-    let stream: MediaStream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: false,
         video: {
-          width: { ideal: this.options.width },
-          height: { ideal: this.options.height },
-          facingMode: 'user',
+          facingMode: GameConfig.camera.facingMode,
+          frameRate: {ideal:24,max:30},
+          width: { ideal: GameConfig.camera.width },
+          height: { ideal: GameConfig.camera.height },
         },
       });
-    } catch (err) {
-      if (!isDeviceLookupError(err)) throw toCameraError(err);
-      // Some cameras reject the preferred constraints; retry with the plainest request.
-      console.warn('getUserMedia with preferred constraints failed, retrying with { video: true }', err);
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
-      } catch (retryErr) {
-        throw toCameraError(retryErr);
-      }
+      if (generation !== this.generation) { stream.getTracks().forEach(track => track.stop()); return; }
+      this.stream = stream;
+    } catch (error) {
+      throw this.toCameraError(error);
     }
 
-    this.stream = stream;
-    for (const track of stream.getVideoTracks()) {
-      track.addEventListener('ended', this.handleTrackEnded);
-    }
-
-    this.video.srcObject = stream;
+    this.video.srcObject = this.stream;
+    this.video.muted = true;
+    this.video.playsInline = true;
     try {
-      await withTimeout(
-        (async () => {
-          await waitForMetadata(this.video);
-          await this.video.play();
-          await waitForFirstFrame(this.video);
-        })(),
-        this.options.firstFrameTimeoutMs,
-        () =>
-          new CameraError(
-            'no-frames',
-            'The camera opened but is not sending video. Close other apps using it, then retry.',
-          ),
-      );
-    } catch (err) {
+      await this.video.play();
+    } catch (error) {
+      if(generation!==this.generation)return;
       this.stop();
-      throw toCameraError(err);
+      throw this.toCameraError(error);
     }
   }
 
   stop(): void {
-    if (!this.stream) return;
-    for (const track of this.stream.getTracks()) {
-      track.removeEventListener('ended', this.handleTrackEnded);
-      track.stop();
-    }
+    this.generation++;
+    this.stream?.getTracks().forEach((track) => track.stop());
     this.stream = null;
     this.video.srcObject = null;
   }
 
-  private readonly handleTrackEnded = (): void => {
-    this.stop();
-    this.onDisconnect?.(new CameraError('disconnected', 'The camera was disconnected.'));
-  };
-}
-
-function waitForMetadata(video: HTMLVideoElement): Promise<void> {
-  if (video.readyState >= HTMLMediaElement.HAVE_METADATA) return Promise.resolve();
-  return new Promise((resolve, reject) => {
-    video.addEventListener('loadedmetadata', () => resolve(), { once: true });
-    video.addEventListener('error', () => reject(video.error), { once: true });
-  });
-}
-
-function waitForFirstFrame(video: HTMLVideoElement): Promise<void> {
-  return new Promise((resolve) => {
-    if ('requestVideoFrameCallback' in video) {
-      video.requestVideoFrameCallback(() => resolve());
-    } else if ((video as HTMLVideoElement).readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-      resolve();
-    } else {
-      (video as HTMLVideoElement).addEventListener('loadeddata', () => resolve(), { once: true });
-    }
-  });
-}
-
-function withTimeout<T>(promise: Promise<T>, ms: number, onTimeout: () => Error): Promise<T> {
-  let timer: ReturnType<typeof setTimeout>;
-  const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(onTimeout()), ms);
-  });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
-}
-
-function isDeviceLookupError(err: unknown): boolean {
-  return err instanceof DOMException && (err.name === 'NotFoundError' || err.name === 'OverconstrainedError');
-}
-
-/** Formats the raw browser error exactly as reported, e.g. "NotFoundError: Requested device not found". */
-function describeBrowserError(err: unknown): string {
-  if (err instanceof DOMException || err instanceof Error) {
-    const constraint = (err as { constraint?: string }).constraint;
-    const detail = `${err.name}: ${err.message || '(no message)'}`;
-    return constraint ? `${detail} (constraint: ${constraint})` : detail;
+  isReady(): boolean {
+    return !!this.stream?.getVideoTracks().some(track => track.readyState === "live" && !track.muted)
+      && this.video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && this.video.videoWidth > 0;
   }
-  return String(err);
-}
 
-function toCameraError(err: unknown): CameraError {
-  if (err instanceof CameraError) return err;
-  const raw = describeBrowserError(err);
-  const name = err instanceof DOMException || err instanceof Error ? err.name : '';
-  switch (name) {
-    case 'NotAllowedError':
-    case 'SecurityError':
+  isActive(): boolean { return !!this.stream?.getVideoTracks().some(track => track.readyState === 'live'); }
+
+  getVideo(): HTMLVideoElement {
+    return this.video;
+  }
+
+  private toCameraError(error: unknown): CameraError {
+    const name = error instanceof DOMException ? error.name : "";
+    if (name === "NotAllowedError" || name === "PermissionDeniedError") {
       return new CameraError(
-        'permission-denied',
-        'Camera permission was denied. Allow camera access for this site in the browser, and for the browser in macOS System Settings > Privacy & Security > Camera, then retry.',
-        raw,
+        "permission",
+        "Camera blocked. Use the browser’s site permissions to allow Camera, then click Enable camera. Check Windows camera privacy settings too.",
       );
-    case 'NotFoundError':
-    case 'OverconstrainedError':
-      return new CameraError('not-found', 'The browser did not find a usable camera.', raw);
-    case 'NotReadableError':
-    case 'AbortError':
-      return new CameraError('in-use', 'The camera could not be started. It may be in use by another app.', raw);
-    default:
-      return new CameraError('unknown', 'The camera could not be started.', raw);
+    }
+    if (name === "NotFoundError" || name === "OverconstrainedError" || name === "NotReadableError") {
+      return new CameraError("unavailable", "Camera unavailable. Close other camera apps and old game tabs, check the camera connection, then retry Enable camera.");
+    }
+    return new CameraError("unknown", "Could not start the webcam.");
   }
 }

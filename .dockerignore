@@ -1,0 +1,12 @@
+node_modules
+dist
+.git
+.merge-backup
+.merge-sources
+.test-build
+artifacts
+.openai
+.tools
+.publish
+zip-preview
+zip-preview-request
