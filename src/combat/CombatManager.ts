@@ -49,6 +49,8 @@ const actionLabel = (action: CombatAction) => action === 'HOLLOW_PURPLE' ? 'Holl
 
 export interface PassivePopup { serial: number; side: Side; character: string; name: string; message: string; batch: number; }
 export class CombatManager {
+  private botMeterGained = 0;
+  private botLastUltimateTurn = 0;
   lastCastBlackFlash=false;
   onBlackFlash:(action:CombatAction,side:'player'|'enemy')=>void=()=>{};
   onCast: (action:CombatAction,side:'player'|'enemy')=>void=()=>{};
@@ -93,6 +95,7 @@ export class CombatManager {
   get opponentHp(): number { return this.opponent.hp; }
   get meter(): number { return this.player.meter; }
   reset(character = this.character, opponent = this.opponent.character): void {
+    this.botMeterGained = 0; this.botLastUltimateTurn = 0;
     this.lastCastBlackFlash=false;
     this.player = makeFighter(character); this.opponent = makeFighter(opponent);
     this.elapsed = 0; this.turn = 'player'; this.turnNumber = 1; this.responseAt = 0;
@@ -124,6 +127,7 @@ export class CombatManager {
     const ultimate = action === fighter.character.ultimate?.gesture || action === 'HOLLOW_PURPLE';
     if (action === 'HOLLOW_PURPLE' && (fighter.redUses < 2 || fighter.blueUses < 2)) return `Unlock: Red ${Math.min(2,fighter.redUses)}/2 · Blue ${Math.min(2,fighter.blueUses)}/2`;
     const cost = action === 'YUJI_ULTIMATE' ? 80 : 100;
+    if (ultimate && fighter === this.opponent && this.opponentMode === 'bot' && (fighter.turns < 6 || fighter.turns - this.botLastUltimateTurn < 5)) return 'Solo opponent ultimate is still charging';
     if (ultimate && fighter.meter < cost) return `Needs ${cost} meter`;
     if (fighter.usedSummons.has(action as GestureType)) return 'Already summoned this match';
     if (action === 'MAHORAGA') {
@@ -136,6 +140,10 @@ export class CombatManager {
   private fighter(side: Side): FighterState { return side === 'player' ? this.player : this.opponent; }
   maxMeter(f = this.player): number { return f.character.id === 'sukuna' ? 150 : 100; }
   private gain(f: FighterState, amount: number): void {
+    if (amount > 0 && f === this.opponent && this.opponentMode === 'bot') {
+      amount = Math.min(amount, Math.max(0, 20 - this.botMeterGained));
+      this.botMeterGained += amount;
+    }
     const previous = f.meter;
     f.meter = Math.min(this.maxMeter(f), Math.max(0, f.meter + amount));
     if (f.character.id === 'gojo' && !f.mahoraga && previous >= 40 && f.meter < 40) this.passive(f);
@@ -170,6 +178,7 @@ export class CombatManager {
   }
   private beginTurn(side: Side): void {
     this.turn = side;
+    if (side === 'enemy') this.botMeterGained = 0;
     const f = this.fighter(side); const enemy = this.fighter(this.other(side));
     f.curseGuard = false; f.curseGrade = '';
     f.turns++; this.turnNumber = this.player.turns;
@@ -247,6 +256,7 @@ export class CombatManager {
     if (action === 'CHOSO_ULTIMATE') f.bloodStacks = 0;
     const graniteDamage = f.graniteDamage;
     if (action === 'GRANITE_BLAST') f.graniteDamage = Math.max(5, f.graniteDamage - 5);
+    if (ultimate && side === 'enemy' && this.opponentMode === 'bot') this.botLastUltimateTurn = f.turns;
     if (ultimate) this.gain(f, -f.meter);
     else if (!f.mahoraga) this.gain(f, punch ? f.character.id === 'toji' ? 10 : UNIVERSAL.punchMeter : action === 'GRANITE_BLAST' ? 15 : UNIVERSAL.techniqueMeter);
     if (f.character.id === 'yuta') this.gain(f, 5);

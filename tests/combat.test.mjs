@@ -90,7 +90,7 @@ test('Megumi can lose during delay; Mahoraga loss counts as player loss', () => 
  const {m:n}=match('megumi'); n.player.mahoraga=true; n.player.hp=5; n.player.adaptation=.5; n.attack('BASIC_PUNCH'); next(n); assert.equal(n.status,'lost');
 });
 test('AI uses the same Gojo and Megumi rules and can win', () => {
- const {m,rng}=match('sukuna','gojo'); m.opponent.meter=100; m.attack('BASIC_PUNCH'); rng(.99); next(m);
+ const {m,rng}=match('sukuna','gojo'); m.opponent.turns=5; m.opponent.meter=100; m.attack('BASIC_PUNCH'); rng(.99); next(m);
  assert.equal(m.playerHp,135); assert.equal(m.player.voidAttacks,2); assert.equal(m.opponent.meter,0);
  const {m:n}=match('sukuna','megumi'); n.opponent.hp=40; n.attack('BASIC_PUNCH'); next(n); assert.equal(n.opponent.summonCountdown,3);
 });
@@ -188,7 +188,7 @@ test('Supernova blind works without stacks; a miss consumes stacks but adds no e
 test('blood damage respects defenses, kills on the affected turn, and freezes action while blinded', () => {
  const {m}=match('choso','gojo'); m.player.meter=100; m.player.bloodStacks=1; m.attack('CHOSO_ULTIMATE'); assert.equal(m.opponentHp,164);
  const {m:n}=match('choso'); n.player.meter=100; n.player.bloodStacks=1; n.opponent.hp=45; n.attack('CHOSO_ULTIMATE'); assert.equal(n.status,'won');
- const {m:p}=match('ryu','choso'); p.opponent.meter=100; p.opponent.bloodStacks=2; p.attack('BASIC_PUNCH'); next(p);
+ const {m:p}=match('ryu','choso'); p.opponent.turns=5; p.opponent.meter=100; p.opponent.bloodStacks=2; p.attack('BASIC_PUNCH'); next(p);
  assert.equal(p.player.bloodBlindTurns,1); assert.equal(p.attack('BASIC_PUNCH'),false); const meter=p.meter; next(p); assert.equal(p.meter,meter); assert.equal(p.player.bloodBlindTurns,0);
 });
 test('Piercing Blood bonus covers exactly two Megumi turns, only for successful shikigami summons', () => {
@@ -231,8 +231,8 @@ test('Blue drains Sukuna overcharge; a skipped Sukuna turn still counts toward a
  const {m:n}=match('sukuna'); n.player.turns=3; n.player.bloodBlindTurns=1; next(n); assert.equal(n.player.fingers,1); assert.equal(n.playerHp,185); assert.equal(n.meter,10);
 });
 test('AI uses each new ultimate; reset clears all new state', () => {
- const {m}=match('gojo','ryu'); m.opponent.hp=100; m.opponent.graniteDamage=5; m.opponent.meter=100; m.attack('BASIC_PUNCH'); next(m); assert.equal(m.opponentHp,130); assert.equal(m.opponent.graniteDamage,25);
- const {m:n}=match('choso','sukuna'); n.opponent.meter=150; n.attack('BASIC_PUNCH'); next(n); assert.equal(n.playerHp,125); assert.equal(n.player.bloodStacks,7); assert.equal(n.player.bloodDamageRemainder,5);
+ const {m}=match('gojo','ryu'); m.opponent.turns=5; m.opponent.hp=100; m.opponent.graniteDamage=5; m.opponent.meter=100; m.attack('BASIC_PUNCH'); next(m); assert.equal(m.opponentHp,130); assert.equal(m.opponent.graniteDamage,25);
+ const {m:n}=match('choso','sukuna'); n.opponent.turns=6; n.opponent.meter=150; n.attack('BASIC_PUNCH'); next(n); assert.equal(n.playerHp,125); assert.equal(n.player.bloodStacks,7); assert.equal(n.player.bloodDamageRemainder,5);
  n.player.bleedingTurns=5; n.player.bloodBlindTurns=1; n.reset(character('sukuna')); assert.equal(n.playerHp,175); assert.equal(n.player.maxHp,175); assert.equal(n.player.fingers,0); assert.equal(n.player.bloodStacks,0); assert.equal(n.player.bloodDamageRemainder,0); assert.equal(n.player.bleedingTurns,0); assert.equal(n.player.bloodBlindTurns,0); assert.equal(n.player.graniteDamage,25); assert.equal(n.player.lastShikigamiTurn,null);
 });
 
@@ -256,7 +256,7 @@ test('Gojo announces entry into Limitless, not each reduced hit', () => {
 });
 test('simultaneous meter resets queue Player 1 before Player 2', () => {
  const {m}=match('gojo','gojo'); m.showNextPassive(); m.tick(2400); m.tick(2400);
- m.player.meter=100; m.opponent.meter=100; m.attack('GOJO_ULTIMATE'); m.tick(1500); m.showNextPassive();
+ m.opponent.turns=5; m.player.meter=100; m.opponent.meter=100; m.attack('GOJO_ULTIMATE'); m.tick(1500); m.showNextPassive();
  assert.equal(m.passivePopup.side,'player');
  m.status='won'; m.tick(2400); assert.equal(m.passivePopup.side,'enemy');
 });
@@ -342,7 +342,7 @@ test('copied Chimera summon can actually be used once and cleared on reset', () 
 });
 test('new enemy kits choose legal techniques and ultimates', () => {
  for(const [id,ult] of [['yuji','YUJI_ULTIMATE'],['geto','GETO_ULTIMATE'],['yuta','YUTA_ULTIMATE']]) {
-  const {m}=match('ryu',id); m.opponent.meter=id==='yuji'?80:100; assert.equal(m.chooseEnemyAction(),ult);
+  const {m}=match('ryu',id); m.opponent.turns=6; m.opponent.meter=id==='yuji'?80:100; assert.equal(m.chooseEnemyAction(),ult);
  }
  const {m}=match('ryu','toji'); m.random=()=>.1; assert.equal(m.chooseEnemyAction(),'CURSED_TOOLS');
 });

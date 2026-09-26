@@ -1,3 +1,4 @@
+import {AFTERGLOW_MS,followHand,releaseOpacity} from './EffectMotion';
 import type {HandOrigin,MoveLook} from './MovePalette';
 import {VfxBudget,VFX_LIMITS} from './VfxBudget';
 import {quadVertex,energyFragment,particleVertex,particleFragment} from './shaders';
@@ -18,6 +19,7 @@ export class EnergyLayer {
  private colors=new Map<MoveLook,Float32Array[]>();
  private look:MoveLook|null=null;private chargeLook:MoveLook|null=null;
  private origin:HandOrigin={x:.5,y:.6};private chargeOrigin:HandOrigin={x:.5,y:.6};
+ private tracked:HandOrigin|null=null;private trackedAt=-Infinity;private lastDraw=0;private follow=false;
  private began=0;private chargeAt=-Infinity;private chargeProgress=0;private count=0;private granted=0;
  private shake:Animation|null=null;
  private x=0;private y=0;private radius=100;private aspect=4/3;private reduced=matchMedia('(prefers-reduced-motion: reduce)');
@@ -62,8 +64,10 @@ export class EnergyLayer {
   if(this.canvas.width!==w||this.canvas.height!==h){this.canvas.width=w;this.canvas.height=h;this.gl?.viewport(0,0,w,h);}
  }
  private palette(look:MoveLook){let value=this.colors.get(look);if(!value){value=[rgb(look.color),rgb(look.accent),rgb(look.ambient)];this.colors.set(look,value);}return value;}
- play(look:MoveLook,origin:HandOrigin,now:number,age=0){
+ track(origin:HandOrigin|null,now:number){this.tracked=origin;this.trackedAt=now;}
+ play(look:MoveLook,origin:HandOrigin,now:number,age=0,follow=true){
   this.stop();if(this.lost||age>=look.duration)return;
+  this.follow=follow;this.lastDraw=now;
   this.look=look;this.origin.x=origin.x;this.origin.y=origin.y;this.began=now-age;
   this.palette(look);this.granted=this.reduced.matches?0:this.budget.claim(this.seat,look.tier);this.count=this.granted;this.resize();
   if(look.shake&&!this.reduced.matches&&age<180){const n=look.shake;this.shake=this.canvas.parentElement!.animate([{transform:'translate(0,0)'},{transform:`translate(${n}px,${-n}px)`},{transform:`translate(${-n}px,${n/2}px)`},{transform:`translate(${n/2}px,0)`},{transform:'translate(0,0)'}],{duration:180-age});}
@@ -84,11 +88,15 @@ export class EnergyLayer {
  draw(now:number){
   if(this.lost)return;
   if(this.chargeLook&&now-this.chargeAt>500)this.chargeLook=null;
-  if(this.look&&now-this.began>Math.min(this.look.duration,this.reduced.matches?350:Infinity)){this.look=null;this.count=0;this.budget.release(this.seat);}
+  if(this.look&&now-this.began>Math.min(this.look.duration+(this.follow&&this.look.aura?AFTERGLOW_MS:0),this.reduced.matches?350:Infinity)){this.look=null;this.count=0;this.budget.release(this.seat);}
   const look=this.look??this.chargeLook;if(!look){this.clear();return;}
+  const age=now-this.began;
+  const afterglow=!!this.look&&age>=this.look.duration;
+  if(this.look&&age>this.look.duration-120&&this.follow)followHand(this.origin,this.tracked,now-this.lastDraw,now-this.trackedAt<180);
+  this.lastDraw=now;
   this.resize();this.anchor(this.look?this.origin:this.chargeOrigin);
-  const charging=!this.look,t=charging?this.chargeProgress:Math.min(1,(now-this.began)/look.duration);
-  const opacity=charging?.24+this.chargeProgress*.42:Math.min(1,(now-this.began)/35)*Math.pow(1-t,.55);
+  const charging=!this.look||afterglow,t=charging?this.chargeProgress:Math.min(1,age/look.duration);
+  const opacity=afterglow?.5*Math.max(0,1-(age-look.duration)/AFTERGLOW_MS):charging?.3+this.chargeProgress*.5:Math.max(this.follow&&look.aura?.5*t:0,releaseOpacity(t));
   const gl=this.gl;
   if(!gl||!this.energy||!this.points){this.drawFallback(look,t,opacity);return;}
   gl.clear(gl.COLOR_BUFFER_BIT);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
@@ -97,7 +105,7 @@ export class EnergyLayer {
   gl.uniform2f(u.resolution,this.canvas.width,this.canvas.height);gl.uniform2f(u.center,this.x,this.y);
   gl.uniform3fv(u.primary,colors[0]);gl.uniform3fv(u.secondary,colors[1]);gl.uniform3fv(u.ambient,colors[2]);
   gl.uniform1f(u.time,this.reduced.matches?0:now*.001);gl.uniform1f(u.progress,t);gl.uniform1f(u.charge,charging||this.reduced.matches?1:0);
-  gl.uniform1f(u.mode,shapes.indexOf(look.shape));gl.uniform1f(u.radius,this.radius*(charging?.42:1));gl.uniform1f(u.opacity,opacity);
+  gl.uniform1f(u.mode,shapes.indexOf(look.shape));gl.uniform1f(u.radius,this.radius*(charging?.58:1.08));gl.uniform1f(u.opacity,opacity);
   gl.uniform1f(u.detail,this.budget.quality);gl.uniform1f(u.aura,look.aura?1:0);gl.drawArrays(gl.TRIANGLES,0,6);gl.disableVertexAttribArray(p.attribute);
   if(charging||this.reduced.matches)return;
   this.count=Math.min(this.count,Math.floor(VFX_LIMITS[look.tier]*this.budget.quality));this.budget.reduce(this.seat,this.count);

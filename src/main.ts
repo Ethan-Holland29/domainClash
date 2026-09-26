@@ -157,8 +157,8 @@ new CharacterSelect(document.querySelector<HTMLElement>('#character-screen')!, i
 });
 multiplayer=new MultiplayerSession(app,combat,combatPanel,videoEl,id=>{characterSelect.value=id;selectCharacter();},()=>bootstrap(),()=>gestures.update([],performance.now()));
 effects=new BattleEffects(app.querySelector('.camera-column .stage')!,app.querySelector('.remote-camera-column .stage')!);
-combat.onCast=(action,side)=>{if(!multiplayer?.active)effects?.play(action,side==='player'?(handOrigin??{x:.5,y:.6}):{x:.5,y:.3},false,(side==='player'?combat.player:combat.opponent).character.id);};
-combat.onBlackFlash=(action,side)=>{if(!multiplayer?.active)effects?.play(action,side==='player'?(handOrigin??{x:.5,y:.6}):{x:.5,y:.3},false,'yuji',0,true);};
+combat.onCast=(action,side)=>{if(!multiplayer?.active)effects?.play(action,side==='player'?(handOrigin??{x:.5,y:.6}):{x:.5,y:.3},false,(side==='player'?combat.player:combat.opponent).character.id,0,false,side==='player');};
+combat.onBlackFlash=(action,side)=>{if(!multiplayer?.active)effects?.play(action,side==='player'?(handOrigin??{x:.5,y:.6}):{x:.5,y:.3},false,'yuji',0,true,side==='player');};
 multiplayer.onCast=(action,origin,remote,characterId,age,blackFlash)=>effects?.play(action,origin,remote,characterId,age,blackFlash);
 effects.debugState=()=>`You: ${combat.player.hp} HP · meter ${combat.player.meter}\nOpponent: ${combat.opponent.hp} HP · meter ${combat.opponent.meter}\nTurn: ${combat.turn} · cooldowns (turns): ${Array.from(combat.player.cooldowns,([id,n])=>`${id} ${Math.max(0,n-combat.player.turns)}`).join(', ')||'none'}`;
 multiplayer.onReset=()=>effects?.clear();
@@ -211,6 +211,7 @@ async function detectionLoop(): Promise<void> {
   if(!tracker.isReady)return;
   const palm=result.hands.flatMap(h=>[0,5,8,9,12,17].map(i=>h.landmarks[i]));
   handOrigin=palm.length?{x:palm.reduce((n,p)=>n+p.x,0)/palm.length,y:palm.reduce((n,p)=>n+p.y,0)/palm.length}:null;
+  effects?.track(handOrigin);
   if(multiplayer)multiplayer.handOrigin=handOrigin;
   multiplayer?.telemetry(result.hands.length,fps,true);
   renderer.render(result);

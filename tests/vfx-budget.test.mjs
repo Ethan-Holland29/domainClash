@@ -32,3 +32,31 @@ test('Black Flash VFX follows the actual combat roll, never a client-provided cl
  const room=new Match(0);room.join(0);room.ready(0,0,{round:1});room.ready(1,0,{round:1});room.tick(3000);
  room.cast(0,'BASIC_PUNCH',3000,{round:1,blackFlash:true});assert.equal(room.events.find(e=>e.type==='cast').blackFlash,false);
 });
+
+import {followHand,releaseOpacity,AFTERGLOW_MS} from '../src/effects/EffectMotion.ts';
+test('afterglow follows smoothly, freezes on tracking loss and brightness lasts through release',()=>{
+ const p={x:.2,y:.3};followHand(p,{x:.8,y:.9},16,true);
+ assert.ok(p.x>.2&&p.x<.8);const x=p.x;followHand(p,{x:1,y:1},16,false);assert.equal(p.x,x);
+ followHand(p,null,16,true);assert.equal(p.x,x);
+ assert.equal(releaseOpacity(0),0);assert.equal(releaseOpacity(.6),1);assert.equal(releaseOpacity(1),0);
+ assert.equal(AFTERGLOW_MS,300);
+});
+test('solo bot passive and attack gains share a turn cap; drains do not refund it',()=>{
+ const c=id=>CHARACTERS.find(c=>c.id===id);
+ for(const id of ['geto','yuta','megumi','sukuna']){
+  const m=new CombatManager(c('ryu'),()=>.99);m.reset(c('ryu'),c(id));m.start();m.beginTurn('enemy');
+  m.gain(m.opponent,50);m.gain(m.opponent,20);assert.equal(m.opponent.meter,20);
+  m.gain(m.opponent,-10);m.gain(m.opponent,15);assert.equal(m.opponent.meter,10);
+  m.beginTurn('enemy');m.gain(m.opponent,50);assert.equal(m.opponent.meter,30);
+ }
+});
+test('solo ultimates wait until turn six and five turns after a cast; reset and PvP are independent',()=>{
+ const c=CHARACTERS.find(c=>c.id==='gojo');const m=new CombatManager(c,()=>.99);m.start();
+ m.opponent.meter=100;m.opponent.turns=5;assert.ok(m.unavailable('GOJO_ULTIMATE',m.opponent));
+ m.opponent.turns=6;assert.equal(m.unavailable('GOJO_ULTIMATE',m.opponent),null);
+ m.act('enemy','GOJO_ULTIMATE');m.opponent.meter=100;m.opponent.turns=10;assert.ok(m.unavailable('GOJO_ULTIMATE',m.opponent));
+ m.opponent.turns=11;assert.equal(m.unavailable('GOJO_ULTIMATE',m.opponent),null);
+ m.reset();m.opponent.turns=6;m.opponent.meter=100;assert.equal(m.unavailable('GOJO_ULTIMATE',m.opponent),null);
+ const pvp=new CombatManager(c,()=>.99,'human');pvp.gain(pvp.opponent,50);assert.equal(pvp.opponent.meter,50);
+ pvp.opponent.meter=100;assert.equal(pvp.unavailable('GOJO_ULTIMATE',pvp.opponent),null);
+});

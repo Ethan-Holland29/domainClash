@@ -117,9 +117,12 @@ void main(){
  }else{
   for(int i=0;i<7;i++){float ang=float(i)*.8976;vec2 v=vec2(cos(ang),sin(ang))*(.15+t*1.3);float drop=length(p-v);energy+=exp(-drop*22.)*.85;core+=exp(-drop*65.)*.3;}
  }
- energy=max(energy,0.);core=max(core,0.);
+ // Reuse noise for a luminous mantle without another blur or texture pass.
+ float mantle=exp(-d*d*1.9)*(.22+n*.35);
+ if(aura>.5&&mode<20.5)energy+=mantle;
+ energy=max(energy,0.)*1.35;core=max(core,0.);
  float alpha=clamp(max(energy*.75,core)+dark,0.,.96)*opacity;
- vec3 rgb=mix(ambient,clamp(tint*energy+secondary*core,0.,1.),clamp(energy+core,0.,1.));
+ vec3 rgb=mix(ambient,clamp(tint*energy*1.18+secondary*core,0.,1.),clamp(energy+core,0.,1.));
  if(dark>.5)rgb=mix(rgb,ambient,dark);
  gl_FragColor=vec4(rgb*alpha,alpha);
 }`;
