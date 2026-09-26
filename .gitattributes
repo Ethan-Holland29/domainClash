@@ -1,0 +1,3 @@
+# Preserve the exact bytes of the vendored MediaPipe package across platforms.
+/public/tracking/wasm/* -text -whitespace
+/public/tracking/vision-bundle.js -text -whitespace

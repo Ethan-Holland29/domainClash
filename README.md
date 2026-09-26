@@ -20,11 +20,13 @@ For development, run `npm run server` and `npm run dev` in separate terminals. V
 
 The nine-character selection screen retains the updated archive's portraits, titles, passives, font, backgrounds, and layout. Combat retains its camera area, player cards, health and domain meters, move buttons, passive notices, battle log, and technique banners. Solo uses the archive's full fighter rules, including cooldowns, summons, passives, and unlockable techniques such as Hollow Purple.
 
-Gesture settings retain **Test signs**, **Diagnose**, **Record**, and **Manual**. Online and camera controls are small additions to that layout.
+Gesture settings retain **Test signs**, **Diagnose**, **Record**, and **Manual**. Online and camera controls are small additions to that layout. Character picks play a rising chime; other buttons play a short tap. Sounds start only after user interaction and also cover controls added during online matches.
 
 ## Hand recognition
 
 `src/signs/handTracking` contains main's recognition engine. The progress adapter uses main's exact existing sign definitions, confidence filtering, aspect-correct geometry, score thresholds, ambiguity checks, smoothing, movement checks, and hold/release timing. World landmarks and handedness confidence are retained. One held sign casts once and must be released before repeating; a stalled camera cannot complete a hold.
+
+The tracker and bundled WASM runtime are pinned to **MediaPipe 1.0.1**, matching main's lockfile. Camera capture requests main's **1280 × 720** resolution without an artificial frame-rate cap. Recognition evaluates each move once per frame. New recordings retain full image/world landmarks, actual aspect ratio, handedness, and timestamps; each capture collects main's 100 samples rather than reconstructing simplified poses.
 
 Some moves in main already required training: Blue, Red, Divine Dogs, and Nue have no built-in recordings. Added progress techniques require their own recordings. Built-in signs stay available when other moves are trained. New techniques retain their own identities instead of being mapped to unrelated signs.
 
@@ -34,7 +36,7 @@ Some moves in main already required training: Blue, Red, Divine Dogs, and Nue ha
 4. Use **Test signs** or **Diagnose**, then return to combat.
 5. Export a backup to preserve your recordings outside browser storage.
 
-Existing progress-format backups remain supported. Main-format recordings already stored by the previous merged build on the same browser origin are restored automatically. Training samples are hand landmark numbers, not video. The MediaPipe model and runtime are bundled under `public/tracking`.
+Existing progress-format backups remain supported. **Import backup** also accepts main's exported gesture dataset, including NONE counterexamples. Recordings from a different browser or website address must be exported there and imported here; they are not included in the main ZIP. Full recordings take precedence over simplified legacy examples for the same sign, while the legacy backup remains stored. Main-format recordings already stored by the previous merged build on the same browser origin are restored automatically. Training samples are hand landmark numbers, not video. The MediaPipe model and runtime are bundled under `public/tracking`.
 
 ## Online 1v1
 
@@ -62,7 +64,7 @@ CloudFront can front an existing server, but cannot itself execute this Node mul
 
 ## Verification and source layout
 
-`npm test` runs 118 checks covering main recognition, coordinate adapters, learned-pose compatibility, release/stall behavior, fixed picks, server-enforced character locking, synchronized results and rematches, camera lifecycle, updated progress combat rules, room isolation, and HTTP/WebSocket matches. `npm run build` typechecks and creates `dist`.
+`npm test` runs 125 checks covering main recognition, coordinate adapters, learned-pose compatibility, release/stall behavior, fixed picks, server-enforced character locking, synchronized results and rematches, camera lifecycle, updated progress combat rules, room isolation, and HTTP/WebSocket matches. `npm run build` typechecks and creates `dist`.
 
 - `src/progress`: updated archive's active screens, combat rules, and integration adapters.
 - `src/signs`: main's gesture engine and dataset support.

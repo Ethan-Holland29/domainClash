@@ -1,7 +1,7 @@
 export const GameConfig = {
   camera: {
-    width: 960,
-    height: 540,
+    width: 1280,
+    height: 720,
     facingMode: "user" as const,
   },
 

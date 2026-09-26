@@ -3,6 +3,9 @@ import { ALL_GESTURES, type GestureType, type GestureEvaluation } from '../handT
 import { evaluateMain, samplesFromPoses, signDefinition } from '../handTracking/MainSigns';
 import { LEARNED_MODEL, SIGN_TUNING } from '../../signs/handTracking/GestureDefinitions';
 import type { TrainingSample } from '../../signs/handTracking/GestureKnnModel';
+import type { GestureDatasetManager } from '../../signs/data/GestureDatasetManager';
+import type { GestureSample } from '../../signs/data/GestureDatasetTypes';
+import { toDatasetFile, validateDataset } from '../../signs/data/GestureDatasetImportExport';
 
 export type Pose = number[][];
 export type Library = Partial<Record<GestureType, Pose[]>>;
@@ -73,6 +76,7 @@ export function validate(value: unknown): Library {
 }
 export class PoseLibrary {
   private imported:TrainingSample[]=[];
+  private dataset:GestureDatasetManager|null=null;
   data: Library = {};
   warning = '';
   constructor() {
@@ -81,8 +85,57 @@ export class PoseLibrary {
     this.retrain();
   }
   setImportedSamples(samples:TrainingSample[]):void{this.imported=samples;this.retrain();}
+  async connectDataset(manager:GestureDatasetManager):Promise<void>{
+    const samples=await manager.all();
+    this.dataset=manager;
+    this.setImportedSamples(samples);
+  }
+  count(gesture:GestureType):number{return LEARNED_MODEL.countFor(signDefinition(gesture).datasetLabel);}
+  async saveSamples(gesture:GestureType,samples:GestureSample[],append:boolean):Promise<void>{
+    if(!this.dataset)throw new Error('Sign storage is still loading or unavailable. Please try again.');
+    if(!samples.length)throw new Error('Record an example first.');
+    const label=signDefinition(gesture).datasetLabel;
+    if(samples.some(s=>s.label!==label))throw new Error('These samples belong to a different sign.');
+    // Replacing affects this move only. Other labels (including NONE counterexamples) survive.
+    if(append)await this.dataset.import(samples,'merge');
+    else await this.dataset.import([...(await this.dataset.all()).filter(s=>s.label!==label),...samples],'replace');
+    this.setImportedSamples(await this.dataset.all());
+  }
+  async exportBackup():Promise<void>{
+    if(!this.dataset)throw new Error('Sign storage is not ready.');
+    const backup={format:'domainclash-progress-signs',version:2,legacy:this.data,dataset:toDatasetFile(await this.dataset.all())};
+    const url=URL.createObjectURL(new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}));
+    const a=document.createElement('a');a.href=url;a.download='domainclash-signs.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+  async importBackup(text:string):Promise<void>{
+    const value=JSON.parse(text);
+    if(value?.format==='domainclash-gesture-dataset'||value?.format==='domainclash-progress-signs'){
+      if(!this.dataset)throw new Error('Sign storage is not ready.');
+      const combined=value.format==='domainclash-progress-signs';
+      if(combined&&value.version!==2)throw new Error('Unsupported sign backup version.');
+      const legacy=combined?validate(value.legacy):null;
+      const samples=validateDataset(combined?value.dataset:value);
+      const labels=new Set(samples.map(s=>s.label));
+      if(legacy)Object.keys(legacy).forEach(id=>labels.add(signDefinition(id as GestureType).datasetLabel));
+      await this.dataset.import([...(await this.dataset.all()).filter(s=>!labels.has(s.label)),...samples],'replace');
+      if(legacy)this.replace({...this.data,...legacy});
+      this.setImportedSamples(await this.dataset.all());
+    }else {
+      const legacy=validate(value);
+      if(!this.dataset)throw new Error('Sign storage is not ready.');
+      const labels=new Set(Object.keys(legacy).map(id=>signDefinition(id as GestureType).datasetLabel));
+      await this.dataset.import((await this.dataset.all()).filter(s=>!labels.has(s.label)),'replace');
+      this.replace({...this.data,...legacy});
+      this.setImportedSamples(await this.dataset.all());
+    }
+  }
   private retrain():void {
-    LEARNED_MODEL.train([...this.imported,...Object.entries(this.data).flatMap(([id,poses])=>samplesFromPoses(id as GestureType,poses!))]);
+    const counts=new Map<string,number>();
+    this.imported.forEach(s=>counts.set(s.label,(counts.get(s.label)??0)+1));
+    // Prefer original landmark recordings when sufficient samples exist. Legacy
+    // backups remain stored, but must not distort imported main recordings.
+    LEARNED_MODEL.train([...this.imported,...Object.entries(this.data).flatMap(([id,poses])=>
+      (counts.get(signDefinition(id as GestureType).datasetLabel)??0)>=SIGN_TUNING.learned.minSamples?[]:samplesFromPoses(id as GestureType,poses!))]);
   }
   available(gesture:GestureType):boolean{const d=signDefinition(gesture);return !d.taughtOnly||LEARNED_MODEL.countFor(d.datasetLabel)>=SIGN_TUNING.learned.minSamples;}
   replace(data: Library): void {

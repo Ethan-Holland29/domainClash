@@ -1,4 +1,5 @@
 import { installLogoCursor } from './LogoCursor';
+import { installUISounds } from './ui/UISounds';
 import { CharacterSelect } from "./characters/CharacterSelect";
 import { CombatManager } from "./combat/CombatManager";
 import { CombatPanel } from "./combat/CombatPanel";
@@ -97,7 +98,7 @@ const online = new OnlineArena(document.querySelector<HTMLElement>('#online')!,v
 let onlineLocked=false;
 const characterSelect = document.querySelector<HTMLSelectElement>('#character')!;
 characterSelect.innerHTML = CHARACTERS.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-const gestures = new GestureRecognizer(hands => library.evaluate(hands, videoEl.videoWidth / videoEl.videoHeight, characterGestures(selectedCharacter)));
+const gestures = new GestureRecognizer(() => ({moves:characterGestures(selectedCharacter),aspect:videoEl.videoWidth / videoEl.videoHeight}));
 function selectCharacter(): void {
   selectedCharacter = CHARACTERS.find(c => c.id === characterSelect.value)!;
   combat.reset(selectedCharacter);
@@ -314,7 +315,7 @@ async function bootstrap() {
 
 // Restore main-format datasets from the prior merged version on this same origin.
 void GestureDatasetManager.create().then(async({manager})=>{
-  const samples=await manager.all();if(!disposed)library.setImportedSamples(samples);
+  if(!disposed)await library.connectDataset(manager);
 }).catch(()=>{cameraStatus('Built-in signs work. Browser storage is unavailable for main-format recordings.');});
 function onKey(event:KeyboardEvent):void{online.key(event);}
 window.addEventListener('keydown',onKey);
@@ -331,12 +332,14 @@ const combatTimer = window.setInterval(() => {
   if(!online.visible)combatPanel.render();
 }, 100);
 const removeLogoCursor = installLogoCursor();
+const removeUISounds = installUISounds(app);
 function cleanup(): void {
   disposed=true;cameraGeneration++;
   online.dispose();
   window.removeEventListener('keydown',onKey);
   document.removeEventListener('visibilitychange',onVisibility);
   removeLogoCursor();
+  removeUISounds();
   clearInterval(combatTimer);
   window.removeEventListener('hashchange', applyPage);
   cancelAnimationFrame(frameId);

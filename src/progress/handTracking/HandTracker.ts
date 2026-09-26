@@ -13,7 +13,9 @@ export class HandTracker {
   }
   detectForVideo(video:HTMLVideoElement,now:number):HandTrackingResult {
     const result=this.tracker.detect(video,now);
-    return {timestampMs:now,hands:(result?.hands??[]).filter(h=>h.handedness!=='Unknown').map(h=>({...h,handedness:h.handedness as 'Left'|'Right'}))};
+    // Main's recognizer decides which detections are trustworthy. Retain all
+    // hands here so learned two-hand signs see the same data as their recordings.
+    return {timestampMs:now,hands:result?.hands??[]};
   }
   dispose():void {
     this.generation++;this.tracker.dispose();

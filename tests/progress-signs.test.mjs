@@ -18,7 +18,7 @@ test('progress signs preserve main definitions, labels and accuracy thresholds',
     const actual=signDefinition(id),expected=GESTURE_DEFINITIONS.find(d=>d.id===mainId);
     assert.equal(actual.evaluate,expected.evaluate);assert.equal(actual.datasetLabel,expected.datasetLabel);
   }
-  const recognizer=new GestureRecognizer(()=>[]);assert.deepEqual(recognizer.core.config,DEFAULT_GESTURE_CONFIG);
+  const recognizer=new GestureRecognizer(()=>({moves:[],aspect:4/3}));assert.deepEqual(recognizer.core.config,DEFAULT_GESTURE_CONFIG);
   assert.equal(signDefinition('YUTA_ULTIMATE').datasetLabel,'YUTA_ULTIMATE');
   assert.equal(signDefinition('RYU_ULTIMATE').taughtOnly,true);
 });
@@ -41,7 +41,7 @@ test('progress Record, Diagnose and live combat share main’s learned matcher a
   library.replace({AMPLIFICATION_BLUE:Array.from({length:25},()=>pose)});
   assert.equal(library.available('AMPLIFICATION_BLUE'),true);
   assert.equal(library.evaluate(hands,4/3,['AMPLIFICATION_BLUE'])[0].matched,true);
-  const r=new GestureRecognizer(h=>library.evaluate(h,4/3,['AMPLIFICATION_BLUE']));const events=[];r.onEvent(e=>events.push(e));
+  const r=new GestureRecognizer(()=>({moves:['AMPLIFICATION_BLUE'],aspect:4/3}));const events=[];r.onEvent(e=>events.push(e));
   for(let t=0;t<1500;t+=50)r.update(hands,t);
   assert.equal(events.filter(e=>e.type==='confirmed').length,1);
   r.suspend();for(let t=2000;t<3000;t+=50)r.update(hands,t);
@@ -54,7 +54,7 @@ test('progress Record, Diagnose and live combat share main’s learned matcher a
 test('tracking stalls cancel unfinished holds and built-in signs do not require recordings',()=>{
   const library=new PoseLibrary();assert.equal(library.available('GOJO_ULTIMATE'),true);assert.equal(library.available('AMPLIFICATION_BLUE'),false);
   const hands=[hand()],pose=describe(hands,4/3);library.replace({AMPLIFICATION_BLUE:Array.from({length:25},()=>pose)});
-  const r=new GestureRecognizer(h=>library.evaluate(h,4/3,['AMPLIFICATION_BLUE']));let fired=0;r.onEvent(e=>{if(e.type==='confirmed')fired++;});
+  const r=new GestureRecognizer(()=>({moves:['AMPLIFICATION_BLUE'],aspect:4/3}));let fired=0;r.onEvent(e=>{if(e.type==='confirmed')fired++;});
   r.update(hands,0);r.update(hands,100);r.update(hands,2000);assert.equal(fired,0);
   LEARNED_MODEL.train([]);
 });

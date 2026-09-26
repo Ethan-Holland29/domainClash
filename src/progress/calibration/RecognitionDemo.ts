@@ -31,9 +31,9 @@ export class RecognitionDemo {
     this.start = container.querySelector('#demo-start')!;
     this.next = container.querySelector('#demo-next')!;
     this.retry = container.querySelector('#demo-retry')!;
-    this.recognizer = new GestureRecognizer(hands => {
+    this.recognizer = new GestureRecognizer(() => {
       const character = CHARACTERS.find(c => c.id === this.trials[this.index]?.character);
-      return library.evaluate(hands, this.aspect, character ? characterGestures(character) : []);
+      return {aspect:this.aspect,moves:character ? characterGestures(character) : []};
     });
     this.start.onclick = () => {
       this.startedAt = new Date().toISOString();

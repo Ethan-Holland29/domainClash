@@ -10,7 +10,7 @@ export interface Landmark {
   z: number; // relative depth, smaller is closer to camera
 }
 
-export type Handedness = "Left" | "Right";
+export type Handedness = "Left" | "Right" | "Unknown";
 
 export interface TrackedHand {
   worldLandmarks?: Landmark[];

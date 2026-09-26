@@ -29,15 +29,21 @@ export class CameraManager {
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      const constraints: MediaStreamConstraints = {
         audio: false,
         video: {
           facingMode: GameConfig.camera.facingMode,
-          frameRate: {ideal:24,max:30},
           width: { ideal: GameConfig.camera.width },
           height: { ideal: GameConfig.camera.height },
         },
-      });
+      };
+      let stream: MediaStream;
+      try { stream = await navigator.mediaDevices.getUserMedia(constraints); }
+      catch (error) {
+        if (generation !== this.generation) return;
+        if (!(error instanceof DOMException) || !['NotFoundError', 'OverconstrainedError'].includes(error.name)) throw error;
+        stream = await navigator.mediaDevices.getUserMedia({audio:false, video:true});
+      }
       if (generation !== this.generation) { stream.getTracks().forEach(track => track.stop()); return; }
       this.stream = stream;
     } catch (error) {
@@ -49,6 +55,11 @@ export class CameraManager {
     this.video.playsInline = true;
     try {
       await this.video.play();
+      const started = performance.now();
+      while (generation === this.generation && !this.isReady()) {
+        if (performance.now() - started > 5000) throw new CameraError('unavailable', 'Camera opened but no video frames arrived. Retry the camera.');
+        await new Promise(resolve => setTimeout(resolve, 25));
+      }
     } catch (error) {
       if(generation!==this.generation)return;
       this.stop();
@@ -75,6 +86,7 @@ export class CameraManager {
   }
 
   private toCameraError(error: unknown): CameraError {
+    if (error instanceof CameraError) return error;
     const name = error instanceof DOMException ? error.name : "";
     if (name === "NotAllowedError" || name === "PermissionDeniedError") {
       return new CameraError(

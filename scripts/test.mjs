@@ -16,5 +16,5 @@ function compile(dir) {
   }
 }
 compile('src');
-const result = spawnSync(process.execPath, ['--test', 'tests/core.test.mjs', 'tests/multiplayer.test.mjs', 'tests/merge.test.mjs', 'tests/progress-combat.test.mjs', 'tests/progress-signs.test.mjs', 'tests/selection.test.mjs'], { stdio: 'inherit' });
+const result = spawnSync(process.execPath, ['--test', 'tests/core.test.mjs', 'tests/multiplayer.test.mjs', 'tests/merge.test.mjs', 'tests/progress-combat.test.mjs', 'tests/progress-signs.test.mjs', 'tests/selection.test.mjs', 'tests/main-accuracy.test.mjs'], { stdio: 'inherit' });
 process.exitCode = result.status ?? 1;

@@ -152,7 +152,8 @@ function isLandmarkList(v: unknown): boolean {
  * bundles it when present; when absent the glob is simply empty, so no file
  * is required and nothing is fetched from a server.
  */
-const bundled = import.meta.glob<string>('/data/gesture-dataset.json', { query: '?raw', import: 'default' });
+const bundled = import.meta.env
+  ? import.meta.glob<string>('/data/gesture-dataset.json', { query: '?raw', import: 'default' }) : {};
 
 export async function loadBundledDataset(): Promise<GestureSample[] | null> {
   const load = Object.values(bundled)[0];
