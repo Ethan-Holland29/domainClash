@@ -36,5 +36,5 @@ export class Match {
   if(this.phase==='countdown'&&now>=this.startedAt){this.phase='playing';this.game.start();this.event('fight');}
   if(this.phase==='playing'){this.game.tick(dt);this.checkResult(now);}
  }
- snapshot(seat){return {phase:this.phase,seat,now:this.now,round:this.round,startedAt:this.startedAt,winner:this.winner,reason:this.reason,players:this.players,domains:[],events:this.events,game:this.game?{player:serialize(this.game.player),opponent:serialize(this.game.opponent),turn:this.game.turn,turnNumber:this.game.turnNumber,status:this.game.status,message:this.game.message,log:this.game.log,technique:this.game.technique,techniqueSerial:this.game.techniqueSerial,passivePopup:this.game.passivePopup}:null};}
+ snapshot(seat){return {phase:this.phase,seat,now:this.now,round:this.round,startedAt:this.startedAt,finishedAt:this.finishedAt,winner:this.winner,reason:this.reason,players:this.players,domains:[],events:this.events,game:this.game?{player:serialize(this.game.player),opponent:serialize(this.game.opponent),turn:this.game.turn,turnNumber:this.game.turnNumber,status:this.game.status,message:this.game.message,log:this.game.log,technique:this.game.technique,techniqueSerial:this.game.techniqueSerial,passivePopup:this.game.passivePopup}:null};}
 }

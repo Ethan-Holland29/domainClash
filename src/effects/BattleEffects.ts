@@ -32,6 +32,7 @@ export class BattleEffects {
  play(action:CombatAction,origin:HandOrigin={x:.5,y:.6},remote=false,characterId?:string,age=0,blackFlash=false,follow=true){const look=blackFlash?BLACK_FLASH_LOOK:moveLook(action,characterId);if(!look||age>=look.duration)return;(remote?this.remote:this.local).play(look,origin,performance.now(),age,!remote&&follow);this.nextDebug=0;this.wake();const banner=document.querySelector<HTMLElement>('#technique-reveal');if(banner){banner.style.background=`linear-gradient(100deg,${look.color}aa,#081528bb,transparent)`;banner.style.borderColor=look.accent;banner.style.animationDuration=`${Math.max(450,look.duration)}ms`;}this.sound(look);}
  track(origin:HandOrigin|null){this.local.track(origin,performance.now());}
  charge(action:CombatAction|null,origin:HandOrigin|null,progress:number,characterId:string){this.local.charge(action?moveLook(action,characterId):null,origin,progress,performance.now());if(action)this.wake();}
+ winSound(characterId:string){const base=moveLook('BASIC_PUNCH',characterId);if(base)this.sound({...base,duration:1100,notes:base.notes.map((n,i)=>n*(1+i*.5)),noise:.08,wave:'triangle'});}
  private sound(p:MoveLook){
   if(this.muted||document.hidden)return;const ac=this.audio();if(!ac||ac.state!=='running')return;this.silence();
   const start=ac.currentTime,duration=Math.min(.85,p.duration/1000);

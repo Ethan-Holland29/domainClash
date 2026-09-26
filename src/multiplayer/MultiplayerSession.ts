@@ -14,6 +14,7 @@ export class MultiplayerSession {
  handOrigin:HandOrigin|null=null;
  onCast:(action:CombatAction,origin:HandOrigin,remote:boolean,characterId:string,age:number,blackFlash:boolean)=>void=()=>{};
  onReset:()=>void=()=>{};
+ onWin:(id:string,age:number)=>void=()=>{};
  private lastViewAt=0;
  readonly client=new MultiplayerClient();
  private peer:PeerCamera;
@@ -68,6 +69,7 @@ export class MultiplayerSession {
   const selection=state.phase==='waiting';
   if(this.lastPhase!==state.phase||this.lastRound!==state.round){
    this.reset();this.onReset();this.lastPhase=state.phase;this.lastRound=state.round;
+   if(state.phase==='finished'&&state.winner!==null){const winner=state.players[state.winner];if(winner)this.onWin(winner.characterId,Math.max(0,state.now-(state.finishedAt??state.now)));}
    const own=state.players[state.seat];if(own){this.choose(own.characterId);this.desired=own.characterId;}
   }
   this.app.dataset.multiplayer='true';this.app.dataset.seat=String(state.seat);this.app.dataset.mode=selection?'selection':'combat';this.app.dataset.page='combat';

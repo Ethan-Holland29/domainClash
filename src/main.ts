@@ -1,3 +1,4 @@
+import {WinTransitionController} from './effects/WinTransition';
 import { installLogoCursor } from './LogoCursor';
 import { CharacterSelect } from "./characters/CharacterSelect";
 import { CombatManager } from "./combat/CombatManager";
@@ -156,12 +157,20 @@ new CharacterSelect(document.querySelector<HTMLElement>('#character-screen')!, i
   characterSelect.value = id; selectCharacter(); location.hash = 'combat';
 });
 multiplayer=new MultiplayerSession(app,combat,combatPanel,videoEl,id=>{characterSelect.value=id;selectCharacter();},()=>bootstrap(),()=>gestures.update([],performance.now()));
+const winTransition=new WinTransitionController();
+void winTransition.preload(CHARACTERS.map(c=>c.id));
+let lastSoloResult="";
+let lastSoloFighter=combat.player;
 effects=new BattleEffects(app.querySelector('.camera-column .stage')!,app.querySelector('.remote-camera-column .stage')!);
 combat.onCast=(action,side)=>{if(!multiplayer?.active)effects?.play(action,side==='player'?(handOrigin??{x:.5,y:.6}):{x:.5,y:.3},false,(side==='player'?combat.player:combat.opponent).character.id,0,false,side==='player');};
 combat.onBlackFlash=(action,side)=>{if(!multiplayer?.active)effects?.play(action,side==='player'?(handOrigin??{x:.5,y:.6}):{x:.5,y:.3},false,'yuji',0,true,side==='player');};
 multiplayer.onCast=(action,origin,remote,characterId,age,blackFlash)=>effects?.play(action,origin,remote,characterId,age,blackFlash);
 effects.debugState=()=>`You: ${combat.player.hp} HP · meter ${combat.player.meter}\nOpponent: ${combat.opponent.hp} HP · meter ${combat.opponent.meter}\nTurn: ${combat.turn} · cooldowns (turns): ${Array.from(combat.player.cooldowns,([id,n])=>`${id} ${Math.max(0,n-combat.player.turns)}`).join(', ')||'none'}`;
-multiplayer.onReset=()=>effects?.clear();
+winTransition.onSound=id=>effects?.winSound(id);
+multiplayer.onWin=(id,age)=>{effects?.clear();winTransition.play(id,()=>{},age);};
+multiplayer.onReset=()=>{effects?.clear();winTransition.cancel();};
+const cancelWinTransition=()=>winTransition.cancel();
+window.addEventListener('hashchange', cancelWinTransition);
 window.addEventListener('hashchange', applyPage);
 applyPage();
 // Move the actual status elements (not copies) beside the camera so live
@@ -298,17 +307,27 @@ const combatTimer = window.setInterval(() => {
   const now = performance.now();
   if (!multiplayer?.active && app.dataset.mode === 'combat' && !document.hidden) combat.tick(Math.min(now - lastCombatTime, 250));
   lastCombatTime = now;
-  if(!multiplayer?.active)combatPanel.render();
+  if(!multiplayer?.active){
+    combatPanel.render();
+    const result=combat.status==='won'||combat.status==='lost'?combat.status:'';
+    if(lastSoloFighter!==combat.player){lastSoloResult="";lastSoloFighter=combat.player;winTransition.cancel();}
+    if(result&&lastSoloResult!==result&&app.dataset.mode==='combat'){
+      effects?.clear();winTransition.play((result==='won'?combat.player:combat.opponent).character.id);
+    }
+    if(!result)winTransition.cancel();lastSoloResult=result;
+  }
 }, 100);
 const removeLogoCursor = installLogoCursor();
 let disposed=false;
 function cleanup(): void {
   disposed=true;
+  winTransition.dispose();
   effects?.dispose();
   multiplayer?.dispose();
   removeLogoCursor();
   clearInterval(combatTimer);
   window.removeEventListener('hashchange', applyPage);
+  window.removeEventListener('hashchange', cancelWinTransition);
   cancelAnimationFrame(frameId);
   camera.stop();
   tracker.dispose();
