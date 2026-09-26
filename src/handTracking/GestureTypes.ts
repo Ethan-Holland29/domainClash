@@ -21,9 +21,22 @@ export type GestureType =
   | "MAHORAGA"
   | "SUKUNA_ULTIMATE"
   | "CHOSO_ULTIMATE"
-  | "MEGUMI_ULTIMATE";
+  | "MEGUMI_ULTIMATE"
+  | "YUJI_ULTIMATE"
+  | "CURSED_TOOLS"
+  | "CURSE_SWALLOW"
+  | "GETO_ULTIMATE"
+  | "RIKA"
+  | "YUTA_ULTIMATE";
 
 export const ALL_GESTURES: GestureType[] = [
+  "YUJI_ULTIMATE",
+  "CURSED_TOOLS",
+  "CURSE_SWALLOW",
+  "GETO_ULTIMATE",
+  "RIKA",
+  "YUTA_ULTIMATE",
+
   "REVERSAL_RED",
   "AMPLIFICATION_BLUE",
   "GRANITE_BLAST",
@@ -47,6 +60,13 @@ export interface GestureConfig {
 }
 
 export const DEFAULT_GESTURE_CONFIG: Record<GestureType, GestureConfig> = {
+  YUJI_ULTIMATE: { requiredHands: 1, holdMs: 900 },
+  CURSED_TOOLS: { requiredHands: 1, holdMs: 500 },
+  CURSE_SWALLOW: { requiredHands: 1, holdMs: 500 },
+  GETO_ULTIMATE: { requiredHands: 1, holdMs: 900 },
+  RIKA: { requiredHands: 1, holdMs: 500 },
+  YUTA_ULTIMATE: { requiredHands: 1, holdMs: 900 },
+
   REVERSAL_RED: { requiredHands: 1, holdMs: 500 },
   AMPLIFICATION_BLUE: { requiredHands: 1, holdMs: 500 },
   GRANITE_BLAST: { requiredHands: 1, holdMs: 500 },
@@ -90,6 +110,13 @@ export interface GestureRecognitionState {
 
 // Storage IDs stay stable so existing recordings remain compatible.
 export const GESTURE_LABELS: Record<GestureType, string> = {
+  YUJI_ULTIMATE: 'Straight Hands',
+  CURSED_TOOLS: 'Cursed Tools',
+  CURSE_SWALLOW: 'Curse Swallow',
+  GETO_ULTIMATE: 'Maximum: Uzumaki',
+  RIKA: 'Rika',
+  YUTA_ULTIMATE: 'Copy',
+
   BASIC_PUNCH: 'Basic Punch',
   REVERSAL_RED: 'Reversal: Red',
   AMPLIFICATION_BLUE: 'Amplification: Blue',

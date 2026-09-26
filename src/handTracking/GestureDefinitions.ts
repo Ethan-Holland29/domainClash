@@ -146,6 +146,12 @@ function evalMahoraga(hands: TrackedHand[]): GestureEvaluation {
 export const GESTURE_EVALUATORS: Record<GestureType, (hands: TrackedHand[]) => GestureEvaluation> = {
   REVERSAL_RED: () => evaluation("REVERSAL_RED", { recordedSignRequired: false }),
   AMPLIFICATION_BLUE: () => evaluation("AMPLIFICATION_BLUE", { recordedSignRequired: false }),
+  YUJI_ULTIMATE: () => evaluation("YUJI_ULTIMATE", { recordedSignRequired: false }),
+  CURSED_TOOLS: () => evaluation("CURSED_TOOLS", { recordedSignRequired: false }),
+  CURSE_SWALLOW: () => evaluation("CURSE_SWALLOW", { recordedSignRequired: false }),
+  GETO_ULTIMATE: () => evaluation("GETO_ULTIMATE", { recordedSignRequired: false }),
+  RIKA: () => evaluation("RIKA", { recordedSignRequired: false }),
+  YUTA_ULTIMATE: () => evaluation("YUTA_ULTIMATE", { recordedSignRequired: false }),
   GRANITE_BLAST: () => evaluation("GRANITE_BLAST", { recordedSignRequired: false }),
   GOJO_ULTIMATE: () => evaluation("GOJO_ULTIMATE", { recordedSignRequired: false }),
   RYU_ULTIMATE: () => evaluation("RYU_ULTIMATE", { recordedSignRequired: false }),

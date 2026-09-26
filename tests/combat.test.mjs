@@ -266,3 +266,83 @@ test('stack and finger events use exact messages and do not fire on misses', () 
  next(m); m.attack('BASIC_PUNCH'); assert.ok(m.log.includes('Sukuna is growing stronger...'));
  m.showNextPassive(); m.status='won'; m.tick(2400); assert.equal(m.passivePopup.name,'Finger Lickin’');
 });
+
+test('Yuji Black Flash boundary and Straight Hands independently roll four hits at 80 meter', () => {
+ const {m,rng}=match('yuji','ryu'); rng(.329); m.attack('BASIC_PUNCH'); assert.equal(m.opponent.hp,180);
+ rng(.99); next(m); m.player.meter=79; assert.match(m.unavailable('YUJI_ULTIMATE'),/80/);
+ m.player.meter=80; const rolls=[.99,.1,.5,.2,.7]; m.random=()=>rolls.shift()??.99;
+ m.attack('YUJI_ULTIMATE'); assert.equal(m.opponent.hp,120); assert.equal(m.player.meter,0);
+});
+test('Yuji doubles technique damage and reduces ultimates, rounded down', () => {
+ const {m}=match('gojo','yuji'); m.attack('REVERSAL_RED'); assert.equal(m.opponent.hp,160);
+ next(m); m.player.meter=100; m.attack('GOJO_ULTIMATE'); assert.equal(m.opponent.hp,134);
+});
+test('Toji punches for 15 and gains 10, bypasses Gojo, then purges automatically', () => {
+ const {m}=match('toji','gojo'); m.player.meter=90; m.attack('BASIC_PUNCH'); assert.equal(m.opponent.hp,185); assert.equal(m.player.meter,100);
+ next(m); assert.equal(m.player.purge,true); assert.match(m.unavailable('BASIC_PUNCH'),/expel/);
+ const before=m.player.hp; next(m); assert.equal(m.player.hp,before-20); assert.equal(m.player.meter,0); assert.equal(m.turn,'enemy');
+});
+test('Toji ignores passive damage and defense without disabling enemy meter or Sukuna', () => {
+ const {m}=match('megumi','toji'); m.random=()=>.05; m.beginTurn('player'); assert.equal(m.opponent.hp,200); assert.equal(m.player.meter,10);
+ m.opponent.bleedingTurns=3; m.beginTurn('enemy'); assert.equal(m.opponent.hp,200);
+ const {m:g}=match('geto','toji'); g.random=()=>.5; g.beginTurn('player'); assert.equal(g.opponent.hp,200); assert.equal(g.player.meter,60);
+ const {m:s}=match('sukuna','toji'); s.player.fingers=2; s.attack('CLEAVE'); assert.equal(s.opponent.hp,165);
+ const {m:y,rng}=match('yuji','toji'); rng(.2); y.attack('BASIC_PUNCH'); assert.equal(y.opponent.hp,190);
+});
+test('Cursed Tools rolls 30/35/40 and enemy pickup lasts one turn only', () => {
+ for(const [roll,damage] of [[0,30],[.4,35],[.9,40]]) {
+  const {m}=match('toji','yuji'); const rolls=[.99,roll,.99]; m.random=()=>rolls.shift()??.99;
+  m.attack('CURSED_TOOLS'); assert.equal(m.opponent.hp,200-damage*2); assert.equal(m.remaining('CURSED_TOOLS'),2);
+ }
+ const {m}=match('toji','ryu'); const rolls=[.99,.4,.1]; m.random=()=>rolls.shift()??.99;
+ m.attack('CURSED_TOOLS'); assert.equal(m.opponent.weaponBonus,10); next(m); assert.equal(m.player.hp,180); assert.equal(m.opponent.weaponBonus,0);
+});
+test('Geto curse grades have exact boundary effects and guard covers the next enemy turn', () => {
+ for(const [roll,damage,meter,guard] of [[.249,5,0,false],[.25,10,10,false],[.649,10,10,false],[.65,0,10,true],[.899,0,10,true],[.9,0,50,false]]) {
+  const m=new CombatManager(character('geto'),()=>roll); m.reset(character('geto'),character('ryu')); m.start();
+  assert.equal(m.opponent.hp,200-damage); assert.equal(m.player.meter,meter); assert.equal(m.player.curseGuard,guard);
+ }
+ const {m}=match('geto','ryu'); m.random=()=>.7; m.beginTurn('player'); m.random=()=>.99;
+ m.attack('BASIC_PUNCH'); next(m); assert.equal(m.player.hp,194); assert.equal(m.player.curseGuard,false);
+});
+test('Curse Swallow heals to cap and suppresses exactly the next two summons', () => {
+ const {m}=match('geto','ryu'); m.player.hp=185; m.attack('CURSE_SWALLOW'); assert.equal(m.player.hp,200); assert.equal(m.player.cursePause,2);
+ next(m); assert.equal(m.player.cursePause,1); assert.equal(m.player.curseGrade,'');
+ m.attack('BASIC_PUNCH'); next(m); assert.equal(m.player.cursePause,0); assert.equal(m.player.curseGrade,'');
+ m.attack('BASIC_PUNCH'); next(m); assert.equal(m.player.curseGrade,'special');
+});
+test('Uzumaki adds signed grades then doubles, halves only above 100 and floors at zero', () => {
+ const {uzumaki}=require(join(dir,'combat/FinalCharacterRules.js'));
+ for (const [roll,damage] of [[.1,50],[.4,0],[.7,100],[.95,0]]) assert.equal(uzumaki(()=>roll).damage,damage);
+ const rolls=[.7,.7,.7,.7,.7,.7,.7,.7,.7,.95]; assert.equal(uzumaki(()=>rolls.shift()).damage,90);
+ const {m}=match('geto','ryu'); m.player.meter=100; const values=[.99,...Array(10).fill(.1)]; m.random=()=>values.shift()??.99;
+ m.attack('GETO_ULTIMATE'); assert.equal(m.opponent.hp,150); assert.equal(m.player.meter,0);
+});
+test('Yuta gains +5 per attack, Rika steals only available meter and uses normal cooldown', () => {
+ const {m}=match('yuta','ryu'); m.attack('BASIC_PUNCH'); assert.equal(m.player.meter,10); next(m);
+ m.opponent.meter=7; m.attack('RIKA'); assert.equal(m.player.meter,42); assert.equal(m.opponent.meter,0); assert.equal(m.opponent.hp,170); assert.equal(m.remaining('RIKA'),2);
+});
+test('Copy covers every eligible ultimate with scaled damage/healing and secondary effects', () => {
+ const cases=[['GOJO_ULTIMATE',32],['HOLLOW_PURPLE',80],['MEGUMI_ULTIMATE',24],['SUKUNA_ULTIMATE',44],['CHOSO_ULTIMATE',40],['RYU_ULTIMATE',0],['YUJI_ULTIMATE',32],['GETO_ULTIMATE',0]];
+ cases.forEach(([action,damage],i)=>{
+  const {m}=match('yuta','ryu'); m.player.meter=100; m.player.hp=100;
+  const rolls=[(i+.1)/8,.99]; m.random=()=>rolls.shift()??.99;
+  m.attack('YUTA_ULTIMATE'); assert.equal(m.opponent.hp,200-damage,action); assert.equal(m.player.meter,5,action);
+  if(action==='GOJO_ULTIMATE') assert.equal(m.opponent.voidAttacks,2);
+  if(action==='HOLLOW_PURPLE') assert.equal(m.player.recovery,3);
+  if(action==='MEGUMI_ULTIMATE') assert.equal(m.player.borrowedSummons.size,1);
+  if(action==='CHOSO_ULTIMATE') assert.equal(m.opponent.bloodBlindTurns,1);
+  if(action==='RYU_ULTIMATE') assert.equal(m.player.hp,132);
+ });
+});
+test('copied Chimera summon can actually be used once and cleared on reset', () => {
+ const {m}=match('yuta','ryu'); m.player.meter=100; const rolls=[2.1/8,.99,.1]; m.random=()=>rolls.shift()??.99;
+ m.attack('YUTA_ULTIMATE'); assert.ok(m.actions().includes('NUE')); next(m); m.attack('NUE'); assert.ok(!m.actions().includes('NUE'));
+ m.reset(); assert.equal(m.player.borrowedSummons.size,0);
+});
+test('new enemy kits choose legal techniques and ultimates', () => {
+ for(const [id,ult] of [['yuji','YUJI_ULTIMATE'],['geto','GETO_ULTIMATE'],['yuta','YUTA_ULTIMATE']]) {
+  const {m}=match('ryu',id); m.opponent.meter=id==='yuji'?80:100; assert.equal(m.chooseEnemyAction(),ult);
+ }
+ const {m}=match('ryu','toji'); m.random=()=>.1; assert.equal(m.chooseEnemyAction(),'CURSED_TOOLS');
+});
