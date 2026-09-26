@@ -2,53 +2,299 @@ import type { CharacterDefinition } from '../characters/CharacterTypes';
 import { characterGestures } from '../characters/CharacterTypes';
 import type { GestureType } from '../handTracking/GestureTypes';
 import { GESTURE_LABELS } from '../handTracking/GestureTypes';
-export const BALANCE = { punchDamage: 4, abilityDamage: 8, ultimateDamage: 30, punchCooldown: 700, abilityCooldown: 1800, enemyInterval: 3000, enemyDamage: 5 };
+import { UNIVERSAL, PASSIVE_CUES } from './CombatRules';
+
+export type CombatAction = GestureType | 'HOLLOW_PURPLE';
+type Side = 'player' | 'enemy';
+export interface FighterState {
+  character: CharacterDefinition;
+  hp: number;
+  maxHp: number;
+  meter: number;
+  turns: number;
+  redUses: number;
+  blueUses: number;
+  recovery: number;
+  voidAttacks: number;
+  dogsTurns: number;
+  usedSummons: Set<GestureType>;
+  cooldowns: Map<CombatAction, number>;
+  summonCountdown: number | null;
+  mahoraga: boolean;
+  adaptation: number;
+  graniteDamage: number;
+  lastShikigamiTurn: number | null;
+  bloodStacks: number;
+  bloodDamageRemainder: number;
+  bleedingTurns: number;
+  bloodBlindTurns: number;
+  fingers: number;
+}
+export const MAHORAGA = { maxHp: 30, damage: 30, damageMultiplierPerTurn: 0.5 } as const;
+const makeFighter = (character: CharacterDefinition): FighterState => ({
+  character, hp: character.id === 'sukuna' ? 175 : UNIVERSAL.maxHp, maxHp: character.id === 'sukuna' ? 175 : UNIVERSAL.maxHp, meter: 0, turns: 0, redUses: 0, blueUses: 0,
+  recovery: 0, voidAttacks: 0, dogsTurns: 0, usedSummons: new Set(), cooldowns: new Map(),
+  summonCountdown: null, mahoraga: false, adaptation: 0,
+  graniteDamage: 25, lastShikigamiTurn: null,
+  bloodStacks: 0, bloodDamageRemainder: 0, bleedingTurns: 0, bloodBlindTurns: 0, fingers: 0,
+});
+const actionLabel = (action: CombatAction) => action === 'HOLLOW_PURPLE' ? 'Hollow Purple' : GESTURE_LABELS[action];
+
+export interface PassivePopup { serial: number; side: Side; character: string; name: string; message: string; batch: number; }
 export class CombatManager {
-  playerHp = 100;
-  opponentHp = 100;
-  meter = 0;
+  passivePopup: PassivePopup | null = null;
+  private passiveQueue: PassivePopup[] = [];
+  private passiveTime = 0;
+  private passiveSerial = 0;
+  private passiveBatch = 0;
+  private passive(f: FighterState): void {
+    const cue = PASSIVE_CUES[f.character.id];
+    if (!cue) return;
+    this.passiveQueue.push({ ...cue, character: f.character.name, side: f === this.player ? 'player' : 'enemy', serial: ++this.passiveSerial, batch: this.passiveBatch });
+    this.note(cue.message);
+  }
+  showNextPassive(): void {
+    if (this.passivePopup) return;
+    this.passiveQueue.sort((a,b) => a.batch - b.batch || (a.side === 'player' ? 0 : 1) - (b.side === 'player' ? 0 : 1));
+    this.passivePopup = this.passiveQueue.shift() ?? null;
+    this.passiveTime = 0;
+  }
+
+  player: FighterState;
+  opponent: FighterState;
   elapsed = 0;
-  turn: 'player' | 'enemy' = 'player';
+  turn: Side = 'player';
   turnNumber = 1;
   private responseAt = 0;
   technique = '';
   techniqueSerial = 0;
-  cooldowns = new Map<GestureType, number>();
   status: 'ready' | 'playing' | 'won' | 'lost' = 'ready';
   message = 'Start a match when ready.';
-  character: CharacterDefinition;
-  constructor(character: CharacterDefinition) { this.character = character; }
-  reset(character = this.character): void {
-    this.character = character; this.playerHp = 100; this.opponentHp = 100; this.meter = 0;
-    this.elapsed = 0; this.turn = 'player'; this.turnNumber = 1; this.responseAt = 0; this.technique = ''; this.techniqueSerial++; this.cooldowns.clear();
+  log: string[] = [];
+  private random: () => number;
+  constructor(character: CharacterDefinition, random: () => number = Math.random) {
+    this.random = random;
+    this.player = makeFighter(character); this.opponent = makeFighter(character);
+  }
+  get character(): CharacterDefinition { return this.player.character; }
+  get playerHp(): number { return this.player.hp; }
+  get opponentHp(): number { return this.opponent.hp; }
+  get meter(): number { return this.player.meter; }
+  reset(character = this.character, opponent = this.opponent.character): void {
+    this.player = makeFighter(character); this.opponent = makeFighter(opponent);
+    this.elapsed = 0; this.turn = 'player'; this.turnNumber = 1; this.responseAt = 0;
+    this.technique = ''; this.techniqueSerial++; this.log = [];
+    this.passivePopup = null; this.passiveQueue = []; this.passiveTime = 0;
     this.status = 'ready'; this.message = 'Start a match when ready.';
   }
-  start(): void { if (this.status === 'ready') { this.status = 'playing'; this.message = 'Your turn. Choose a technique or perform its sign.'; } }
-  remaining(gesture: GestureType): number { return Math.max(0, (this.cooldowns.get(gesture) ?? 0) - this.turnNumber); }
-  attack(gesture: GestureType): boolean {
-    if (this.status !== 'playing' || this.turn !== 'player' || !characterGestures(this.character).includes(gesture)) return false;
-    const ultimate = this.character.ultimate?.gesture === gesture;
-    if (ultimate && this.meter < 100) { this.message = 'Ultimate unavailable — build your meter to 100.'; return false; }
-    if (this.remaining(gesture)) { this.message = `${GESTURE_LABELS[gesture]} is cooling down.`; return false; }
-    const punch = gesture === 'BASIC_PUNCH';
-    const damage = ultimate ? BALANCE.ultimateDamage : punch ? BALANCE.punchDamage : BALANCE.abilityDamage;
-    this.opponentHp = Math.max(0, this.opponentHp - damage);
-    this.meter = ultimate ? 0 : Math.min(100, this.meter + (punch ? 10 : 20));
-    this.cooldowns.set(gesture, this.turnNumber + (punch ? 1 : 2));
-    this.technique = GESTURE_LABELS[gesture]; this.techniqueSerial++;
-    this.turn = 'enemy'; this.responseAt = this.elapsed + 1500;
-    this.message = `${GESTURE_LABELS[gesture]} hit for ${damage}. Opponent responding…`;
-    if (!this.opponentHp) { this.status = 'won'; this.message = 'Victory! Restart to play again.'; }
-    return true;
+  private note(text: string): void { this.message = text; this.log.unshift(text); this.log.length = Math.min(this.log.length, 30); }
+  start(): void { if (this.status === 'ready') { this.status = 'playing'; this.passiveBatch++; for (const f of [this.player, this.opponent]) if (f.character.id === 'ryu' || f.character.id === 'gojo') this.passive(f); this.beginTurn('player'); } }
+  actions(fighter = this.player): CombatAction[] {
+    if (fighter.mahoraga) return ['BASIC_PUNCH'];
+    return [...characterGestures(fighter.character), ...(fighter.character.id === 'gojo' ? ['HOLLOW_PURPLE' as const] : [])];
+  }
+  cooldownDuration(action: CombatAction, fighter = this.player): number {
+    if (fighter.character.id === 'megumi' || fighter.mahoraga || action === 'BASIC_PUNCH' || action === 'HOLLOW_PURPLE' || action === fighter.character.ultimate?.gesture) return 0;
+    if (fighter.character.id === 'ryu' && action === 'GRANITE_BLAST') return 1;
+    return fighter.character.id === 'gojo' && (action === 'REVERSAL_RED' || action === 'AMPLIFICATION_BLUE') ? 3 : 2;
+  }
+  remaining(action: CombatAction, fighter = this.player): number {
+    return Math.min(this.cooldownDuration(action, fighter), Math.max(0, (fighter.cooldowns.get(action) ?? 0) - fighter.turns));
+  }
+  unavailable(action: CombatAction, fighter = this.player): string | null {
+    if (!this.actions(fighter).includes(action)) return 'Not available to this fighter';
+    if (fighter.bloodBlindTurns) return 'Must spend this turn wiping blood from eyes';
+    if (fighter.recovery) return `Recovering: ${fighter.recovery} turn(s)`;
+    const remaining = this.remaining(action, fighter);
+    if (remaining) return `Cooldown: ${remaining} own turn(s) remaining`;
+    const ultimate = action === fighter.character.ultimate?.gesture || action === 'HOLLOW_PURPLE';
+    if (action === 'HOLLOW_PURPLE' && (fighter.redUses < 2 || fighter.blueUses < 2)) return `Unlock: Red ${Math.min(2,fighter.redUses)}/2 · Blue ${Math.min(2,fighter.blueUses)}/2`;
+    if (ultimate && fighter.meter < 100) return 'Needs 100 meter';
+    if (fighter.usedSummons.has(action as GestureType)) return 'Already summoned this match';
+    if (action === 'MAHORAGA') {
+      if (fighter.summonCountdown !== null) return 'Already summoning';
+      if (fighter.hp >= 50) return 'Requires less than 50 HP';
+    }
+    return null;
+  }
+  private other(side: Side): Side { return side === 'player' ? 'enemy' : 'player'; }
+  private fighter(side: Side): FighterState { return side === 'player' ? this.player : this.opponent; }
+  maxMeter(f = this.player): number { return f.character.id === 'sukuna' ? 150 : 100; }
+  private gain(f: FighterState, amount: number): void {
+    const previous = f.meter;
+    f.meter = Math.min(this.maxMeter(f), Math.max(0, f.meter + amount));
+    if (f.character.id === 'gojo' && !f.mahoraga && previous >= 40 && f.meter < 40) this.passive(f);
+  }
+  private loseHp(f: FighterState, damage: number): number {
+    const lost = Math.min(f.hp, damage);
+    f.hp = Math.max(0, f.hp - damage);
+    if (f.character.id === 'choso') {
+      const total = f.bloodDamageRemainder + lost;
+      const stacks = Math.floor(total / 10);
+      f.bloodStacks += stacks; f.bloodDamageRemainder = total % 10;
+      if (stacks) this.passive(f);
+      if (stacks) this.note(`Flowing Red Scale: ${f.character.name} gained ${stacks} blood stack(s), now ${f.bloodStacks}.`);
+    }
+    return lost;
+  }
+  private hurt(f: FighterState, base: number): number {
+    const reduction = f.mahoraga ? f.adaptation : f.character.id === 'gojo' && f.meter < 40 ? 0.20 : 0;
+    const damage = Math.floor(base * (1 - reduction));
+    return this.loseHp(f, damage);
+  }
+  private finish(): boolean {
+    if (this.opponent.hp <= 0) { this.status = 'won'; this.note('Victory! The opponent has fallen.'); return true; }
+    if (this.player.hp <= 0) { this.status = 'lost'; this.note('Defeat. Restart to try again.'); return true; }
+    return false;
+  }
+  private beginTurn(side: Side): void {
+    this.turn = side;
+    const f = this.fighter(side); const enemy = this.fighter(this.other(side));
+    f.turns++; this.turnNumber = this.player.turns;
+    if (f.summonCountdown !== null) {
+      f.summonCountdown--;
+      if (f.summonCountdown === 0) {
+        f.summonCountdown = null; f.mahoraga = true; f.hp = MAHORAGA.maxHp; f.maxHp = MAHORAGA.maxHp; f.meter = 0; f.adaptation = 0.5;
+        f.dogsTurns = 0; f.voidAttacks = 0;
+        this.note(`${f.character.name} sacrifices himself. Mahoraga takes over with 30 HP.`);
+      }
+    } else if (f.mahoraga) {
+      f.adaptation = 1 - (1 - f.adaptation) * MAHORAGA.damageMultiplierPerTurn;
+    }
+    if (f.bleedingTurns > 0) {
+      f.bleedingTurns--;
+      const damage = this.hurt(f, 5);
+      this.note(`Supernova blood damage: ${f.character.name} takes ${damage}. ${f.bleedingTurns} turn(s) remain.`);
+      if (this.finish()) return;
+    }
+    if (!f.mahoraga && f.character.id === 'megumi' && this.random() < 0.10) {
+      this.passive(f);
+      const damage = this.hurt(enemy, 10); this.gain(f, 10);
+      this.note(`Shadow Dweller: ${f.character.name} sabotages the enemy for ${damage} damage and gains 10 meter.`);
+      if (this.finish()) return;
+    }
+    if (f.bloodBlindTurns) this.note(`${f.character.name} must spend this turn wiping blood from their eyes.`);
+    else if (f.recovery) this.note(`${f.character.name} cannot attack this turn: recovering from Hollow Purple (${f.recovery} turns left).`);
+    else if (f.summonCountdown !== null) this.note(`${f.character.name}: Mahoraga arrives in ${f.summonCountdown} turn(s). Choose an attack.`);
+    else this.note(`${side === 'player' ? 'Your' : 'Opponent’s'} turn${f.mahoraga ? ' — Mahoraga' : ''}.`);
+    this.responseAt = this.elapsed + UNIVERSAL.responseMs;
+  }
+  attack(action: CombatAction): boolean {
+    if (this.status !== 'playing' || this.turn !== 'player') return false;
+    this.passiveBatch++;
+    return this.act('player', action);
+  }
+  private act(side: Side, action: CombatAction): boolean {
+    const f = this.fighter(side); const enemy = this.fighter(this.other(side));
+    const reason = this.unavailable(action, f);
+    if (reason) { this.note(reason); return false; }
+    const ultimate = action === f.character.ultimate?.gesture || action === 'HOLLOW_PURPLE';
+    const punch = action === 'BASIC_PUNCH';
+    const cooldown = this.cooldownDuration(action, f);
+    if (cooldown) f.cooldowns.set(action, f.turns + cooldown + 1);
+    this.technique = f.mahoraga ? 'Mahoraga: Strike' : actionLabel(action); this.techniqueSerial++;
+    const spentMeter = f.meter;
+    const bloodStacks = f.bloodStacks;
+    if (action === 'CHOSO_ULTIMATE') f.bloodStacks = 0;
+    const graniteDamage = f.graniteDamage;
+    if (action === 'GRANITE_BLAST') f.graniteDamage = Math.max(5, f.graniteDamage - 5);
+    if (ultimate) this.gain(f, -f.meter);
+    else if (!f.mahoraga) this.gain(f, punch ? UNIVERSAL.punchMeter : action === 'GRANITE_BLAST' ? 15 : UNIVERSAL.techniqueMeter);
+    if (action === 'REVERSAL_RED') f.redUses++;
+    if (action === 'AMPLIFICATION_BLUE') f.blueUses++;
+    if (action === 'NUE' || action === 'DIVINE_DOGS' || action === 'MAHORAGA') f.usedSummons.add(action);
+    if (action === 'HOLLOW_PURPLE') f.recovery = 3;
+    let confused = false;
+    if (f.voidAttacks > 0) { f.voidAttacks--; confused = this.random() < 0.33; }
+    if (confused) {
+      const damage = this.loseHp(f, 5); this.note(`${f.character.name} is disoriented by Unlimited Void and hits themselves for ${damage} damage.`);
+    } else if (this.random() < (punch ? UNIVERSAL.punchMiss : UNIVERSAL.techniqueMiss)) {
+      this.note(`${this.technique} missed.`);
+    } else {
+      let damage = punch ? UNIVERSAL.punchDamage : 0;
+      if (punch && f.character.id === 'sukuna') damage = 5;
+      if (f.mahoraga) damage = MAHORAGA.damage;
+      if (action === 'CLEAVE') damage = 15 + 10 * f.fingers;
+      if (action === 'SUKUNA_ULTIMATE') damage = 15 * Math.floor(spentMeter / 30);
+      if (action === 'CHOSO_ULTIMATE') {
+        damage = 40;
+        enemy.bloodBlindTurns = 1;
+        enemy.bleedingTurns += bloodStacks;
+      }
+      if (action === 'GRANITE_BLAST') damage = graniteDamage;
+      if (action === 'RYU_ULTIMATE') { damage = 0; f.hp = Math.min(f.maxHp, f.hp + 40); f.graniteDamage = 25; }
+      if (action === 'PIERCING_BLOOD') {
+        const recentSummon = enemy.character.id === 'megumi' && !enemy.mahoraga && enemy.lastShikigamiTurn !== null && enemy.turns - enemy.lastShikigamiTurn < 2;
+        damage = recentSummon ? 35 : 20;
+        if (recentSummon) this.note('Piercing Blood pierces the recent shikigami summon: +15 damage.');
+      }
+      if (action === 'DIVINE_DOGS' || action === 'NUE') f.lastShikigamiTurn = f.turns;
+      if (action === 'REVERSAL_RED') damage = 20;
+      if (action === 'AMPLIFICATION_BLUE') { damage = 10; this.gain(enemy, -20); }
+      if (action === 'GOJO_ULTIMATE') { damage = 40; enemy.voidAttacks = 2; }
+      if (action === 'HOLLOW_PURPLE') damage = 100;
+      if (action === 'DIVINE_DOGS') { damage = 0; f.hp = Math.min(f.maxHp, f.hp + 20); f.dogsTurns = 3; }
+      if (action === 'NUE') damage = [15,20,30,5][Math.floor(this.random() * 4)];
+      if (action === 'MEGUMI_ULTIMATE') {
+        damage = 20;
+        const summon = this.random() < 0.5 ? 'NUE' : 'DIVINE_DOGS';
+        f.usedSummons.delete(summon); this.note(`Chimera Shadow Garden refreshes ${GESTURE_LABELS[summon]}.`);
+      }
+      if (action === 'MAHORAGA') { damage = 0; f.summonCountdown = 3; }
+      const dealt = this.hurt(enemy, damage);
+      if (action === 'CHOSO_ULTIMATE') this.note(`Supernova consumes ${bloodStacks} blood stack(s): 5 damage for ${bloodStacks} turn(s), plus one turn wiping blood.`);
+      this.note(action === 'RYU_ULTIMATE' ? 'Way Too Sweet! Recovered up to 40 HP and restored Granite Blast to 25 damage.' : action === 'DIVINE_DOGS' ? 'Demon Dogs summoned for 3 turns. Recovered up to 20 HP.' : action === 'MAHORAGA' ? 'Mahoraga summoning begins. Megumi can fight during the three-turn delay.' : `${this.technique} dealt ${dealt} damage.`);
+    }
+    if (this.finish()) return true;
+    this.endTurn(side); return true;
+  }
+  private endTurn(side: Side): void {
+    const f = this.fighter(side); const enemy = this.fighter(this.other(side));
+    if (f.dogsTurns > 0) {
+      f.dogsTurns--; const damage = this.hurt(enemy, 5);
+      this.note(`Demon Dogs bite for ${damage} damage. ${f.dogsTurns} turn(s) remain.`);
+      if (this.finish()) return;
+    }
+    if (f.character.id === 'sukuna' && f.turns % 3 === 0 && f.fingers < 5) {
+      f.fingers++; f.maxHp += 10; f.hp = Math.min(f.maxHp, f.hp + 10); this.gain(f, 10);
+      this.passive(f);
+      this.note(`Finger Lickin’: Sukuna ate finger ${f.fingers}/5, gained 10 HP and 10 meter. Cleave now deals ${15 + 10 * f.fingers}.`);
+    }
+    this.beginTurn(this.other(side));
+  }
+  private chooseEnemyAction(): CombatAction {
+    const f = this.opponent;
+    const available = this.actions(f).filter(action => !this.unavailable(action, f));
+    if (available.includes('HOLLOW_PURPLE')) return 'HOLLOW_PURPLE';
+    if (f.character.ultimate && available.includes(f.character.ultimate.gesture)) {
+      const waitForOvercharge = f.character.id === 'sukuna' && f.meter < 150 && this.random() < 0.5;
+      if (!waitForOvercharge) return f.character.ultimate.gesture;
+    }
+    if (available.includes('MAHORAGA')) return 'MAHORAGA';
+    const techniques = available.filter(a => a !== 'BASIC_PUNCH' && a !== f.character.ultimate?.gesture);
+    if (techniques.length && this.random() < 0.65) return techniques[Math.floor(this.random() * techniques.length)];
+    return 'BASIC_PUNCH';
   }
   tick(deltaMs: number): void {
+    this.passiveBatch++;
+    if (this.passivePopup) {
+      this.passiveTime += Math.max(0, deltaMs);
+      if (this.passiveTime >= 2400) this.passivePopup = null;
+    }
+    this.showNextPassive();
     if (this.status !== 'playing') return;
     this.elapsed += Math.max(0, deltaMs);
-    if (this.turn === 'enemy' && this.elapsed >= this.responseAt) {
-      this.playerHp = Math.max(0, this.playerHp - BALANCE.enemyDamage);
-      this.technique = 'Counter strike'; this.techniqueSerial++;
-      if (!this.playerHp) { this.status = 'lost'; this.message = 'Defeat. Restart and try again.'; }
-      else { this.turn = 'player'; this.turnNumber++; this.message = `Opponent dealt ${BALANCE.enemyDamage}. Your turn.`; }
-    }
+    if (this.elapsed < this.responseAt) return;
+    const f = this.fighter(this.turn);
+    if (f.bloodBlindTurns > 0) {
+      f.bloodBlindTurns--;
+      // A turn spent blinded also counts toward an existing recovery period.
+      if (f.recovery > 0) f.recovery--;
+      this.note(`${f.character.name} spends the turn wiping blood from their eyes.`);
+      this.endTurn(this.turn);
+    } else if (f.recovery > 0) {
+      f.recovery--; this.note(`${f.character.name} skips a turn to recover (${f.recovery} remaining).`);
+      this.endTurn(this.turn);
+    } else if (this.turn === 'enemy') this.act('enemy', this.chooseEnemyAction());
   }
 }

@@ -161,3 +161,43 @@ html.logo-cursor-active,html.logo-cursor-active * { cursor:none !important; }
 @keyframes logo-spin { to { transform:rotate(360deg); } }
 @media(prefers-reduced-motion:reduce) { .logo-cursor img { animation:none; } }
 @media(max-width:760px) { .select-hero { padding:12px 5px; gap:8px; } .hero-copy { left:auto; right:auto; } .hero-nameplate { gap:7px; } .selection-footer > span { display:block; max-width:57%; font-size:.6rem; } }
+
+#fight-stats,#fight-effects { white-space:pre-line; }
+#fight-stats { background:#0a2138; font-size:.88rem; }
+#fight-effects { font-size:.75rem; line-height:1.5; color:#bad6f4; padding:8px; background:#090f1b; border-radius:5px; }
+#fight-passive,.combat-help,.combat-rules { font-size:.78rem; }
+.opponent-picker { display:flex; gap:10px; align-items:center; margin:8px 0; }
+#fight-buttons { display:grid; grid-template-columns:1fr 1fr; }
+#fight-buttons button { font-size:.77rem; text-align:left; }
+.combat-log { margin-top:14px; font-size:.75rem; }
+#fight-log { padding-left:20px; line-height:1.5; }
+
+.portrait-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.portrait-art { height:clamp(64px,13vh,112px); }
+.roster-empty { border:3px solid #29415c66; background:linear-gradient(140deg,#11203466,#050a1266); border-radius:2px; min-height:80px; }
+@media(max-width:760px) { .portrait-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; } .portrait-art { height:65px; } .roster-empty { min-height:85px; } }
+/* Nine equally sized square slots, including the unassigned positions. */
+.portrait-grid { width:min(100%,max(210px,calc(100dvh - 340px))); grid-auto-rows:1fr; }
+.portrait-card,.roster-empty { aspect-ratio:1; min-height:0; }
+.portrait-card { display:flex; flex-direction:column; }
+.portrait-art { flex:1; min-height:0; height:0; }
+.tile-name { flex:none; }
+@media(max-width:760px) { .portrait-grid { width:100%; } .portrait-art { height:0; } .roster-empty { min-height:0; } }
+
+/* Preserve the full supplied silhouettes for the new roster portraits. */
+#character-screen[data-fighter="toji"] .hero-art { object-fit:contain; mask-image:none; }
+#character-screen[data-fighter="yuta"] .selection-scenery { background-size:100% 100%; background-position:center; background-repeat:no-repeat; background-color:#081322; }
+#character-screen[data-fighter="yuta"] .hero-art { width:45%; object-position:center bottom; }
+#character-screen[data-fighter="yuta"] .selection-scenery::after { background:linear-gradient(90deg,#02060ce8 0%,#030912ba 37%,#03081130 68%,#03081118),linear-gradient(0deg,#02060c99,transparent 55%); }
+
+/* Queued passive activation banners sit below the camera and above the result. */
+.passive-popup { --passive-color:#3cafff; position:relative; overflow:hidden; margin:6px 0; padding:10px 24px; border-left:5px solid var(--passive-color); background:linear-gradient(105deg,#07223e 0%,#124d80 75%,transparent); color:#fff; clip-path:polygon(0 0,98% 0,95% 25%,100% 45%,96% 70%,98% 100%,0 100%); }
+.passive-popup[data-side="enemy"] { --passive-color:#ff6a75; background:linear-gradient(105deg,#3b0a14 0%,#8d2538 75%,transparent); }
+.passive-popup[hidden] { display:none; }
+.passive-owner { display:block; font:700 .68rem system-ui,sans-serif; letter-spacing:.1em; color:var(--passive-color); }
+.passive-name { display:block; font:italic 800 clamp(18px,2vw,27px) system-ui,sans-serif; text-shadow:2px 2px #0008; }
+.passive-enter { animation:passive-sweep 2.4s both; }
+@keyframes passive-sweep { 0% { opacity:0; transform:translateX(-35px); } 12%,88% { opacity:1; transform:translateX(0); } 100% { opacity:0; transform:translateX(18px); } }
+@media(prefers-reduced-motion:reduce) { .passive-enter { animation:none; } }
+
+#app:not([data-mode="combat"]) #passive-popup { display:none; }

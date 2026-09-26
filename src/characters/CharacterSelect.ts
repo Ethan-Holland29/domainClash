@@ -18,8 +18,8 @@ export class CharacterSelect {
       container.dataset.fighter = preview.id;
       container.style.setProperty('--fighter-color', PORTRAITS[preview.id].color);
       container.querySelector('#preview-name')!.textContent = preview.name;
-      container.querySelector('#preview-abilities')!.textContent = preview.abilities.filter(g => g !== 'BASIC_PUNCH').map(g => GESTURE_LABELS[g]).join(' / ');
-      container.querySelector('#preview-ultimate')!.textContent = preview.ultimate?.name ?? '';
+      container.querySelector('#preview-abilities')!.textContent = preview.plannedKit ? preview.plannedKit.technique ?? 'None' : preview.abilities.filter(g => g !== 'BASIC_PUNCH').map(g => GESTURE_LABELS[g]).join(' / ') || 'None';
+      container.querySelector('#preview-ultimate')!.textContent = preview.plannedKit ? preview.plannedKit.ultimate ?? 'None for now' : preview.ultimate?.name ?? 'None for now';
       container.querySelector('#ultimate-label')!.textContent = 'ULTIMATE';
       container.querySelectorAll<HTMLButtonElement>('.portrait-card').forEach((b, i) => b.setAttribute('aria-pressed', String(index === i)));
       // Restart only when the character changes; rapid hovering cancels the old entrance.
@@ -44,9 +44,12 @@ export class CharacterSelect {
       };
       container.querySelector('.portrait-grid')!.appendChild(button);
     });
-    const seal = document.createElement('div');
-    seal.className = 'roster-seal'; seal.setAttribute('aria-hidden', 'true'); seal.textContent = '呪';
-    container.querySelector('.portrait-grid')!.appendChild(seal);
+    for (let slot = CHARACTERS.length; slot < 9; slot++) {
+      const empty = document.createElement('div');
+      empty.className = 'roster-empty';
+      empty.setAttribute('aria-hidden', 'true');
+      container.querySelector('.portrait-grid')!.appendChild(empty);
+    }
     container.querySelector<HTMLButtonElement>('#choose-fighter')!.onclick = () => choose(CHARACTERS[current].id);
     show(0);
   }

@@ -1,6 +1,6 @@
 # DomainClash
 
-Webcam hand tracking and gesture recognition prototype with guided personal sign recording. The Combat tab includes a basic match prototype.
+Webcam hand tracking and gesture recognition prototype with guided personal sign recording. The Combat tab includes a turn-based duel with character-specific passives and effects.
 
 ## Run
 
@@ -24,7 +24,7 @@ The MediaPipe runtime and hand model are served from public/wasm and public/mode
 
 Basic Punch remains a shared attack. Character kits:
 
-| Character | Abilities | Ultimate | Future meter |
+| Character | Abilities | Ultimate | Meter |
 | --- | --- | --- | --- |
 | Satoru Gojo | Reversal: Red, Amplification: Blue | Domain Expansion: Unlimited Void | Domain |
 | Megumi Fushiguro | Ten Shadows: Shikigami Summon — Nue, Demon Dogs, Mahoraga | Domain Expansion: Chimera Shadow Garden | Domain |
@@ -32,7 +32,7 @@ Basic Punch remains a shared attack. Character kits:
 | Choso | Piercing Blood | Supernova | Blood |
 | Ryu Ishigori | Granite Blast | Way Too Sweet! | Ultimate (provisional resource label) |
 
-Hollow Purple is deferred. Meter types now label the prototype resource; character-specific resource mechanics remain provisional. Ryu uses a neutral ultimate meter label until resource mechanics are specified. Each summon has its own sign. Demon Dogs retains the DIVINE_DOGS storage key to preserve existing recordings.
+Hollow Purple unlocks during combat after two uses each of Red and Blue. It currently uses a button rather than a recorded sign. Ryu uses an Ultimate meter label. Each summon has its own sign. Demon Dogs retains the DIVINE_DOGS storage key to preserve existing recordings.
 
 Character switching cancels captures and resets recognition. Other characters' signs remain intact. Dismantle and the old shared Domain Expansion key are ignored when reading older backups. New moves remain inactive until recorded.
 
@@ -50,20 +50,41 @@ For difficult signs, add 3–5 examples with small natural angle changes. Each c
 
 Use **Check a problem sign** outside the guided demo. Select the expected move, perform it, and read whether tracking lost a hand, the pose differs from saved references, or another sign is too similar. Export diagnostic report captures up to 30 seconds of sampled scores and hand counts, with no video. A current-frame pose match does not bypass the recognizer's hold and debounce.
 
-Manual ability test buttons send the same typed ability inputs as camera confirmations, with a distinct source marker. They work without a camera, are disabled during the guided demo, and do not produce sign-test passes. The Combat tab includes a basic match prototype. For poses whose fingers remain occluded, an easier substitute recorded under the same move is an available gameplay control.
+Manual ability test buttons send the same typed ability inputs as camera confirmations, with a distinct source marker. They work without a camera, are disabled during the guided demo, and do not produce sign-test passes. The Combat tab includes a turn-based duel with character-specific passives and effects. For poses whose fingers remain occluded, an easier substitute recorded under the same move is an available gameplay control.
 
 A clearly strongest pose can now qualify through a slower acceptance path: its distance must stay below 1.5 times the normal cutoff and lead its nearest rival by at least 0.02 and 20% of its own distance. This path requires at least a one-second hold, preserving the existing brief-gap pause, hand-count protection and debounce. A closest label alone is not acceptance; distant and ambiguous poses remain rejected. These thresholds need live validation.
 
-## Combat milestone
+## Combat and selection
 
-Select a character and open Combat, then Start match. Both sides start with 100 HP. Basic Punch deals 4 damage, adds 10 meter, and has a 0.7-second cooldown. Character abilities deal 8 damage, add 20 meter, and have independent 1.8-second cooldowns. Ultimates require 100 meter, deal 30 damage and consume the meter. The opponent deals 5 damage every 3 seconds. Only accepted hits build meter.
+Select a character, choose an opponent, and start a match. The duel alternates one action per fighter, with a 1.5-second opponent response delay and no time limit on the player's choice. Leaving Combat or hiding the page pauses response timing. Switching characters or restarting clears match state. Buttons and recorded camera signs use the same combat rules; technique names animate with a reduced-motion alternative.
 
-Choso uses Blood; Gojo, Megumi and Sukuna use Domain; Ryu uses Ultimate. Blood generation and consumption currently follow the same prototype charging rules, pending dedicated Choso mechanics. All attacks automatically hit; summons and domains have placeholder damage, without cinematic or persistent effects yet. Match simulation pauses outside Combat and while the document is hidden. Character changes reset the match. Restart clears health, cooldowns and meter. Buttons and camera signs use the same combat rules. Balance constants are in src/combat/CombatManager.ts.
+Character selection has nine filled square slots, using local artwork and character backgrounds. Hover, focus or tap a character to preview, then confirm. Basic Punch recognition uses a 0.23 matching cutoff with stability and ambiguity checks.
 
-Basic Punch uses a 0.23 matching cutoff (previously 0.19), retaining stability and ambiguity checks.
+## Current combat rules (notebook implementation)
 
-## Turn-based update
+The universal stats supersede the earlier prototype balance: 200 HP; punch damage 10, meter gain 5, miss chance 10%; techniques gain 20 meter with a 5% miss chance. At least 100 meter is required for an ultimate; all accumulated meter is spent when used. Player and computer fighters use the same rules. Pick the opponent before starting a match.
 
-The current duel alternates player actions and one automatic opponent response after a 1.5-second technique reveal. There is no time limit on the player's choice. Basic Punch is available every player turn; other techniques require one intervening player turn before reuse. Cooldowns are now turns, superseding the earlier millisecond balance notes. Leaving Combat pauses response timing. Technique names animate across the screen, with a reduced-motion alternative.
+Gojo has Limitless (20% incoming damage reduction below 40 meter), Red (20 damage), Blue (10 damage and drains 20 opposing meter), Unlimited Void (40 damage and two enemy attack attempts with a 33% chance to self-hit for 5 instead), and Hollow Purple (100 damage, unlocked after two uses each of Red and Blue, followed by three skipped attack turns). Purple currently uses a button because no gesture has been recorded for it.
 
-Open #characters (or Change fighter) for the five-character portrait grid. Hover, focus, or tap to preview, then Enter the arena to select. Artwork is remotely loaded manga imagery with source links in the selection screen and URLs in src/characters/Portraits.ts. No generated artwork is used. Remote images may be unavailable if their host blocks loading.
+Megumi has Shadow Dweller (10% chance at the start of his turn to deal 10 damage and gain 10 meter), Demon Dogs (heal 20 and bite for 5 on three turns while allowing normal attacks), and Nue (equal odds of 15/20/30/5 damage). Dogs and Nue are once per match; Chimera Shadow Garden deals 20 and randomly refreshes one summon. Below 50 HP, Mahoraga can be called: Megumi stays active through three opposing responses, then is sacrificed and replaced by Mahoraga with 30 HP and 30 attack damage. Mahoraga starts at half incoming damage and halves it again each turn, with damage rounded down. Its victory or defeat ends the Megumi player's match.
+
+Explicit interpretation choices: healing caps at the fighter’s maximum HP; each turn means that fighter's own turn; dogs first bite on the summoning turn; missed moves still gain/spend meter and count as uses; summons consume their attempt even on a miss; Hollow Purple costs 100 meter; adaptation has no cap, so sufficiently adapted damage rounds down to zero.
+
+Run `npm test` for the deterministic combat regression suite and `npm run build` for the application build. Character selection now has nine filled square slots.
+
+Regular cursed techniques now have independent two-turn cooldowns. Gojo's Red and Blue each have a three-turn cooldown; Ryu's Granite Blast has a one-turn cooldown. These count full subsequent turns of the user of the move: Red on turn 1 is blocked on turns 2–4 and ready on turn 5. Misses also start cooldowns. The computer obeys the same restrictions. Punches and ultimates keep their existing rules; Megumi's summons remain governed by their one-use restrictions and Chimera Shadow Garden refresh, not timed cooldowns.
+
+
+### Ryu, Choso and Sukuna
+
+- **Ryu — Jane, You’re Early:** Granite Blast starts at 25 damage, loses 5 per attempted use (minimum 5), grants 15 meter, and has a one-turn cooldown. Way Too Sweet heals 40 HP (capped at 200) and restores blast damage to 25; it does not damage the opponent or clear an existing cooldown.
+- **Choso — Flowing Red Scale:** Each cumulative 10 actual HP lost grants one blood stack; partial damage carries over. Piercing Blood deals 20, or 35 if Megumi successfully summoned Nue or Demon Dogs during his current or preceding turn. Supernova deals 40, forces the opponent to spend their next turn wiping blood, and consumes all blood stacks to apply 5 damage per affected turn for one turn per stack. The first blood tick is at the start of the blinded turn. Defensive reductions still apply. Repeated Supernova extends bleed duration without multiplying its per-turn damage. Blood stacks and the 100-point Blood meter are separate resources.
+- **Sukuna — Finger Lickin’:** Starts at 175 HP; punches deal 5. At the end of each third completed turn, automatically eats one finger (maximum five), gaining 10 current/max HP and 10 meter. Maximum HP reaches 225. Cleave deals 15 + 10 per finger. Meter can overcharge to 150. Malevolent Shrine spends all meter and deals 15 per complete 30 meter: 45 at 100–119, 60 at 120–149, 75 at 150.
+
+The crossed-out Sukuna parry/bleed passive is not implemented. Existing miss rules apply: attempted moves spend meter, trigger cooldowns and consume Choso's stacks even on a miss; a missed Supernova adds no opponent effects and a missed Way Too Sweet does not heal/reset. Skipped turns count toward finger timing and cooldowns. When blindness overlaps Hollow Purple recovery, the same skipped turn advances both counters. All five kits apply equally to the computer opponent.
+
+### Additional character previews
+
+Yuji Itadori, Toji Fushiguro, Suguru Geto and Yuta Okkotsu fill the remaining selection slots with supplied portraits and backgrounds. Yuji has no technique and the planned ultimate Straight hands; Geto has Curse Swallow and Maximum: Uzumaki; Yuta has Rika and Copy; Toji has neither assigned yet. These four can use Basic Punch, but their named moves are preview-only until combat effects and signs are defined. Geto’s background removes the standing man while preserving the girl; Yuta retains the supplied FRAUD ALERT background.
+
+Passive activation banners appear under the camera (blue Player 1, red Player 2), queue for 2.4 seconds each, and put their character message in the battle log. Ryu announces his constant passive at match start; Gojo announces Limitless at match start and whenever his meter falls from 40 or higher to below 40, Megumi successful sabotage, Choso new stacks, and Sukuna each finger. Simultaneous activations show Player 1 first. Restart clears queued banners.

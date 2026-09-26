@@ -26,7 +26,7 @@ app.innerHTML = `
   <main class="workspace">
     <section class="camera-column">
       <div class="stage"><video id="webcam" autoplay playsinline></video><canvas id="overlay"></canvas></div>
-      <div id="live-feedback" aria-label="Live feedback"><p id="combat-status" role="status"></p></div>
+      <div id="live-feedback" aria-label="Live feedback"><div id="passive-popup" class="passive-popup" role="status" aria-live="polite" hidden><span class="passive-owner"></span><strong class="passive-name"></strong></div><p id="combat-status" role="status"></p></div>
       <div id="hud"></div><button id="camera-retry" hidden>Retry camera</button>
       <p id="ability-status" role="status"></p>
     </section>
@@ -99,7 +99,7 @@ function selectCharacter(): void {
     button.onclick = () => inputs.send(selectedCharacter, gesture, 'button');
     return button;
   }));
-  document.querySelector('#kit')!.textContent = `Shared attack and abilities${selectedCharacter.abilityGroup ? ` — ${selectedCharacter.abilityGroup}` : ""}: ${selectedCharacter.abilities.map(g => GESTURE_LABELS[g]).join(', ')}. ${selectedCharacter.ultimate?.name ?? 'No ultimate assigned'}. Meter: ${selectedCharacter.meter}.`;
+  document.querySelector('#kit')!.textContent = `Shared attack and abilities${selectedCharacter.abilityGroup ? ` — ${selectedCharacter.abilityGroup}` : ""}: ${selectedCharacter.abilities.map(g => GESTURE_LABELS[g]).join(', ')}. ${selectedCharacter.ultimate?.name ?? 'No active ultimate assigned'}. ${selectedCharacter.plannedKit ? `Planned technique: ${selectedCharacter.plannedKit.technique ?? 'None'}. Planned ultimate: ${selectedCharacter.plannedKit.ultimate ?? 'None for now'}. Combat effects pending. ` : ''}Meter: ${selectedCharacter.meter}.`;
   document.querySelector('#ability-status')!.textContent = 'Select Combat to play or use the other tabs to practice.';
 }
 characterSelect.onchange = selectCharacter;

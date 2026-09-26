@@ -5,7 +5,9 @@ export interface CharacterDefinition {
   name: string;
   abilities: GestureType[];
   abilityGroup?: string;
-  // Metadata for future combat; no resource gains or costs are implemented yet.
+  // Named roster moves awaiting combat rules and recorded signs.
+  plannedKit?: { technique: string | null; ultimate: string | null };
+  // All resource types share the universal gains and full-meter ultimate cost.
   meter: 'domain' | 'blood' | 'ultimate';
   ultimate: { name: string; gesture: GestureType } | null;
 }
