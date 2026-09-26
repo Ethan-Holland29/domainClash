@@ -1,73 +1,81 @@
-import { HAND_CONNECTIONS, type HandFrame, type Handedness } from '../handTracking/HandTypes';
+/**
+ * HandDebugRenderer
+ *
+ * Draws detected hand landmarks/connections onto a canvas overlaid on
+ * the webcam feed. Pure rendering — knows nothing about gestures or
+ * combat. Full drawing logic (including mirroring correction) lands
+ * in Milestone 1; this scaffold sets up the canvas plumbing.
+ */
 
-const HAND_COLORS: Record<Handedness, string> = {
-  Left: '#3fa9f5',
-  Right: '#f5a623',
-  Unknown: '#cccccc',
+import type { HandTrackingResult } from "../handTracking/HandTypes";
+import { HAND_CONNECTIONS } from "../handTracking/HandTypes";
+
+const HAND_COLORS: Record<string, string> = {
+  Left: "#4fd1c5",
+  Right: "#f6ad55",
 };
 
-/**
- * Draws hand landmarks over the webcam feed. The canvas backing store is
- * sized to the video's native resolution and styled with the same
- * object-fit as the <video>, so normalized landmarks line up 1:1.
- */
 export class HandDebugRenderer {
-  private readonly ctx: CanvasRenderingContext2D;
+  private canvas: HTMLCanvasElement;
+  private ctx: CanvasRenderingContext2D;
 
   constructor(canvas: HTMLCanvasElement) {
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('2D canvas context unavailable');
+    this.canvas = canvas;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      throw new Error("Could not acquire 2D rendering context for debug canvas.");
+    }
     this.ctx = ctx;
   }
 
-  /** Match the canvas backing store to the video resolution. */
   resize(width: number, height: number): void {
-    const { canvas } = this.ctx;
-    if (canvas.width !== width || canvas.height !== height) {
-      canvas.width = width;
-      canvas.height = height;
-    }
+    this.canvas.width = width;
+    this.canvas.height = height;
   }
 
   clear(): void {
-    this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
-  draw(frame: HandFrame): void {
-    const { ctx } = this;
-    const { width: w, height: h } = ctx.canvas;
-    const scale = Math.max(w, h) / 1280;
+  /**
+   * Draws landmarks/connections for the given frame.
+   *
+   * The video element is displayed mirrored (CSS scaleX(-1)) for a
+   * natural selfie view, but MediaPipe's landmark coordinates are
+   * given in the *unmirrored* frame. We mirror the x coordinate here
+   * so the overlay lines up with what the user actually sees.
+   */
+  render(result: HandTrackingResult): void {
     this.clear();
 
-    for (const hand of frame.hands) {
-      const color = HAND_COLORS[hand.handedness];
-      const pts = hand.landmarks;
+    const { width, height } = this.canvas;
 
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 3 * scale;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
+    for (const hand of result.hands) {
+      const color = HAND_COLORS[hand.handedness] ?? "#e2e8f0";
+      const points = hand.landmarks.map((lm) => ({
+        x: (1 - lm.x) * width, // mirror to match the mirrored video
+        y: lm.y * height,
+      }));
+
+      this.ctx.strokeStyle = color;
+      this.ctx.lineWidth = 2;
+      this.ctx.beginPath();
       for (const [a, b] of HAND_CONNECTIONS) {
-        ctx.moveTo(pts[a].x * w, pts[a].y * h);
-        ctx.lineTo(pts[b].x * w, pts[b].y * h);
+        const pa = points[a];
+        const pb = points[b];
+        if (!pa || !pb) continue;
+        this.ctx.moveTo(pa.x, pa.y);
+        this.ctx.lineTo(pb.x, pb.y);
       }
-      ctx.stroke();
+      this.ctx.stroke();
 
-      ctx.fillStyle = '#ffffff';
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 2 * scale;
-      for (const p of pts) {
-        ctx.beginPath();
-        ctx.arc(p.x * w, p.y * h, 4 * scale, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
+      this.ctx.fillStyle = color;
+      for (const p of points) {
+        this.ctx.beginPath();
+        this.ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
+        this.ctx.fill();
       }
-
-      const wrist = pts[0];
-      ctx.font = `bold ${Math.round(18 * scale)}px system-ui, sans-serif`;
-      ctx.fillStyle = color;
-      ctx.textAlign = 'center';
-      ctx.fillText(hand.handedness, wrist.x * w, wrist.y * h + 28 * scale);
     }
   }
 }
+

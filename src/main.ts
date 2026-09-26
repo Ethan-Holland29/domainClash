@@ -1,323 +1,274 @@
-import './style.css';
-import { CameraError, CameraManager } from './camera/CameraManager';
-import {
-  CHARACTERS,
-  MOVE_SLOTS,
-  SLOT_NAME,
-  characterMoves,
-  findCharacter,
-  type CharacterDefinition,
-  type MoveSlot,
-} from './characters/Characters';
-import { GestureDatasetManager, type DatasetStartupInfo } from './data/GestureDatasetManager';
-import { EXTRA_DATASET_LABELS } from './data/GestureDatasetTypes';
-import { GestureRecorder } from './data/GestureRecorder';
-import { DomainVideoStore } from './data/DomainVideoStore';
-import { LEARNED_MODEL, SIGN_TUNING } from './handTracking/GestureDefinitions';
-import { GestureRecognizer } from './handTracking/GestureRecognizer';
-import { HandTracker } from './handTracking/HandTracker';
-import type { GestureDefinition } from './handTracking/GestureTypes';
-import type { HandFrame } from './handTracking/HandTypes';
-import { HandDebugRenderer } from './rendering/HandDebugRenderer';
-import { CharacterSelect } from './ui/CharacterSelect';
-import { DatasetPanel, type LabelGroup } from './ui/DatasetPanel';
-import { DomainCinematic, findDomainVideo } from './ui/DomainCinematic';
-import { DomainVideoPanel } from './ui/DomainVideoPanel';
-import { DebugHUD } from './ui/DebugHUD';
-import { FpsCounter } from './ui/FpsCounter';
-import { GestureDebugPanel } from './ui/GestureDebugPanel';
-import { MoveBanner } from './ui/MoveBanner';
-import { MovePanel } from './ui/MovePanel';
-import { StatusOverlay } from './ui/StatusOverlay';
+import { installLogoCursor } from './LogoCursor';
+import { CharacterSelect } from "./characters/CharacterSelect";
+import { CombatManager } from "./combat/CombatManager";
+import { CombatPanel } from "./combat/CombatPanel";
+import "./style.css";
+import { CameraManager } from "./camera/CameraManager";
+import { HandTracker } from "./handTracking/HandTracker";
+import { GestureRecognizer, type GestureEvent } from "./handTracking/GestureRecognizer";
+import { HandDebugRenderer } from "./rendering/HandDebugRenderer";
+import { DebugHUD } from "./ui/DebugHUD";
 
-const MIRRORED = true;
-const CHARACTER_STORAGE_KEY = 'domainclash.characterId';
+import { RecognitionInspector } from "./calibration/RecognitionInspector";
+import { AbilityInputBus } from "./input/AbilityInput";
+import { RecognitionDemo } from "./calibration/RecognitionDemo";
+import { PoseLibrary } from "./calibration/PoseLibrary";
+import { SignTrainer } from "./calibration/SignTrainer";
+import { GESTURE_LABELS } from "./handTracking/GestureTypes";
+import { CHARACTERS } from "./characters/Characters";
+import { characterGestures } from "./characters/CharacterTypes";
 
-const app = document.querySelector<HTMLDivElement>('#app')!;
+const app = document.querySelector<HTMLDivElement>("#app")!;
+
 app.innerHTML = `
-  <h1>DomainClash</h1>
-  <div id="stage">
-    <video id="webcam" playsinline muted></video>
-    <canvas id="overlay"></canvas>
-  </div>
+  <div id="technique-reveal" aria-live="polite"></div><section id="character-screen" hidden></section>
+  <header class="topbar"><strong>DomainClash</strong><a href="#characters">Change fighter</a><label>Character <select id="character"></select></label><details><summary>Character kit</summary><p id="kit"></p></details><a id="settings-link" href="#gesture-settings">Gesture settings</a><a id="back-to-combat" href="#combat" hidden>← Back to combat</a></header>
+  <main class="workspace">
+    <section class="camera-column">
+      <div class="stage"><video id="webcam" autoplay playsinline></video><canvas id="overlay"></canvas></div>
+      <div id="live-feedback" aria-label="Live feedback"><p id="combat-status" role="status"></p></div>
+      <div id="hud"></div><button id="camera-retry" hidden>Retry camera</button>
+      <p id="ability-status" role="status"></p>
+    </section>
+    <aside class="controls">
+      <nav class="mode-tabs" aria-label="Gesture settings" hidden>
+        
+        <button data-mode="demo" aria-pressed="false">Test signs</button>
+        <button data-mode="inspector" aria-pressed="false">Diagnose</button>
+        <button data-mode="trainer" aria-pressed="false">Record</button>
+        <button data-mode="manual" aria-pressed="false">Manual</button>
+      </nav>
+      <div class="panel-area">
+        <section id="combat"></section>
+        <section id="demo" hidden></section>
+        <section id="inspector" hidden></section>
+        <section id="trainer" hidden></section>
+        <section id="manual" hidden><h2>Manual ability test</h2><p>Send ability inputs without camera recognition. These do not count as passing a sign test.</p><div id="manual-inputs" class="actions"></div></section>
+      </div>
+    </aside>
+  </main>
 `;
+app.dataset.mode = 'combat';
+app.dataset.page = 'combat';
+for (const button of app.querySelectorAll<HTMLButtonElement>('[data-mode]')) {
+  button.onclick = () => {
+    const mode = button.dataset.mode!;
+    gestures.update([], performance.now());
+    trainer.setMoves(characterGestures(selectedCharacter));
+    app.dataset.mode = mode;
+    for (const panel of app.querySelectorAll<HTMLElement>('.panel-area > section')) panel.hidden = panel.id !== mode;
+    for (const tab of app.querySelectorAll<HTMLButtonElement>('[data-mode]')) tab.setAttribute('aria-pressed', String(tab === button));
+  };
+}
 
-const stage = document.querySelector<HTMLDivElement>('#stage')!;
-const camera = new CameraManager(document.querySelector<HTMLVideoElement>('#webcam')!, { mirrored: MIRRORED });
-const tracker = new HandTracker({ mirrored: MIRRORED });
-const renderer = new HandDebugRenderer(document.querySelector<HTMLCanvasElement>('#overlay')!);
-const hud = new DebugHUD(stage);
-const overlay = new StatusOverlay(stage);
-const fps = new FpsCounter();
-// Starts with no active moves; the character select enables the chosen character's three.
-const gestures = new GestureRecognizer({}, []);
-const gestureDebug = new GestureDebugPanel(stage, gestures.config.enterThreshold);
-const banner = new MoveBanner(stage);
-const characterSelect = new CharacterSelect(stage, CHARACTERS, moveStatus);
-const movePanel = new MovePanel(app, moveStatus);
-const cinematic = new DomainCinematic();
-// Keeps the video panel between the move panel and the (later-created) dataset panel.
-const videoPanelHost = document.createElement('div');
-videoPanelHost.className = 'panel-host';
-app.appendChild(videoPanelHost);
-let videoStore: DomainVideoStore | null = null;
+const videoEl = document.querySelector<HTMLVideoElement>("#webcam")!;
+const canvasEl = document.querySelector<HTMLCanvasElement>("#overlay")!;
+const hudContainer = document.querySelector<HTMLDivElement>("#hud")!;
 
-let character: CharacterDefinition | null = null;
-let characterMoveSlots: Record<MoveSlot, GestureDefinition> | null = null;
-let datasetPanel: DatasetPanel | null = null;
-
-gestures.onEvent((event) => hud.logEvent(event));
-// Combat will subscribe here later; for now a fired move is announced.
-gestures.onAction((action, gesture) => {
-  const slot = MOVE_SLOTS.find((s) => characterMoveSlots?.[s].id === gesture.id);
-  console.info(`[move] ${character?.name} ${slot ?? '?'} (${action}): ${gesture.name}`);
-  if (!character || !slot) return;
-  const title = slot === 'ultimate' ? `Domain Expansion: ${gesture.name}` : gesture.name;
-  banner.show(`${character.name} · ${SLOT_NAME[slot]}`, title.toUpperCase(), character.color);
-  if (slot === 'ultimate') void playDomainVideo(character, gesture);
-});
-
-/**
- * Plays the Domain Expansion clip for this domain: the video uploaded in the
- * "Domain Expansion videos" panel, else a bundled file in src/assets/domains/.
- */
-async function playDomainVideo(who: CharacterDefinition, domain: GestureDefinition): Promise<void> {
-  await prepareDomainVideo(); // normally already loaded when the character was picked
-  const url = prepared?.domainId === domain.id ? prepared.url : findDomainVideo(who.id, domain.id);
-  if (!url) {
-    console.info(`No video for ${domain.name}: add one in the "Domain Expansion videos" panel.`);
+const hud = new DebugHUD(hudContainer);
+const renderer = new HandDebugRenderer(canvasEl);
+const camera = new CameraManager(videoEl);
+const tracker = new HandTracker();
+const library = new PoseLibrary();
+const trainer = new SignTrainer(document.querySelector<HTMLElement>('#trainer')!, library);
+const inspector = new RecognitionInspector(document.querySelector<HTMLElement>('#inspector')!, library);
+const inputs = new AbilityInputBus();
+inputs.subscribe(input => {
+  if (app.dataset.mode === 'combat') {
+    if (input.characterId === combat.character.id) combat.attack(input.gesture);
+    combatPanel.render();
     return;
   }
-  await runCinematic(url);
-  if (character === who && !characterSelect.isOpen) gestures.requireRelease(domain.id); // holding the sign must not re-fire it
+  document.querySelector('#ability-status')!.textContent = `${selectedCharacter.name} — ${GESTURE_LABELS[input.gesture]} input received (${input.source === 'button' ? 'manual test' : 'camera'}). Practice input only.`;
+});
+let selectedCharacter = CHARACTERS[0];
+const combat = new CombatManager(selectedCharacter);
+const combatPanel = new CombatPanel(document.querySelector<HTMLElement>('#combat')!, combat, () => gestures.update([], performance.now()));
+const characterSelect = document.querySelector<HTMLSelectElement>('#character')!;
+characterSelect.innerHTML = CHARACTERS.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+const gestures = new GestureRecognizer(hands => library.evaluate(hands, videoEl.videoWidth / videoEl.videoHeight, characterGestures(selectedCharacter)));
+function selectCharacter(): void {
+  selectedCharacter = CHARACTERS.find(c => c.id === characterSelect.value)!;
+  combat.reset(selectedCharacter);
+  combatPanel.setButtons(g => inputs.send(selectedCharacter, g, 'button'));
+  gestures.update([], performance.now());
+  trainer.setMoves(characterGestures(selectedCharacter));
+  inspector.setMoves(characterGestures(selectedCharacter));
+  document.querySelector('#manual-inputs')!.replaceChildren(...characterGestures(selectedCharacter).map(gesture => {
+    const button = document.createElement('button'); button.textContent = GESTURE_LABELS[gesture];
+    button.onclick = () => inputs.send(selectedCharacter, gesture, 'button');
+    return button;
+  }));
+  document.querySelector('#kit')!.textContent = `Shared attack and abilities${selectedCharacter.abilityGroup ? ` — ${selectedCharacter.abilityGroup}` : ""}: ${selectedCharacter.abilities.map(g => GESTURE_LABELS[g]).join(', ')}. ${selectedCharacter.ultimate?.name ?? 'No ultimate assigned'}. Meter: ${selectedCharacter.meter}.`;
+  document.querySelector('#ability-status')!.textContent = 'Select Combat to play or use the other tabs to practice.';
 }
-
-/** The current character's domain clip, loaded ahead of time. */
-let prepared: { domainId: string; url: string; objectUrl: boolean } | null = null;
-
-/**
- * Loads the current character's domain clip ahead of time, so when the
- * domain fires its audio starts instantly instead of after reading a large
- * file from storage. `force` reloads it (e.g. after a new upload).
- */
-async function prepareDomainVideo(force = false): Promise<void> {
-  const who = character;
-  const domain = characterMoveSlots?.ultimate;
-  if (!who || !domain || (!force && prepared?.domainId === domain.id)) return;
-  const blob = (await videoStore?.get(domain.id).catch(() => null)) ?? null;
-  if (character !== who) return; // switched character while loading
-  const url = blob ? URL.createObjectURL(blob) : findDomainVideo(who.id, domain.id);
-  const old = prepared;
-  prepared = url ? { domainId: domain.id, url, objectUrl: blob !== null } : null;
-  cinematic.prepare(url);
-  if (old?.objectUrl && old.url !== url) URL.revokeObjectURL(old.url);
+characterSelect.onchange = selectCharacter;
+selectCharacter();
+const demo = new RecognitionDemo(document.querySelector<HTMLElement>('#demo')!, library, locked => {
+  characterSelect.disabled = locked;
+  for (const tab of app.querySelectorAll<HTMLButtonElement>('[data-mode]')) tab.disabled = locked;
+  document.querySelector<HTMLElement>('#manual-inputs')!.inert = locked;
+  document.querySelector<HTMLElement>('#trainer')!.inert = locked;
+  if (locked) trainer.setMoves(characterGestures(selectedCharacter));
+  gestures.update([], performance.now());
+});
+function applyPage(): void {
+  const selection = !location.hash || location.hash === '#characters';
+  document.querySelector<HTMLElement>('#character-screen')!.hidden = !selection;
+  document.querySelector<HTMLElement>('.workspace')!.hidden = selection;
+  document.querySelector<HTMLElement>('.topbar')!.hidden = selection;
+  const settings = location.hash === '#gesture-settings';
+  if (demo.active) document.querySelector<HTMLButtonElement>('#demo-stop')!.click();
+  gestures.update([], performance.now());
+  trainer.setMoves(characterGestures(selectedCharacter));
+  app.dataset.page = settings ? 'settings' : 'combat';
+  const mode = selection ? 'selection' : settings ? 'demo' : 'combat';
+  app.dataset.mode = mode;
+  document.querySelector<HTMLElement>('.mode-tabs')!.hidden = !settings;
+  document.querySelector<HTMLElement>('#settings-link')!.hidden = settings;
+  document.querySelector<HTMLElement>('#back-to-combat')!.hidden = !settings;
+  for (const panel of app.querySelectorAll<HTMLElement>('.panel-area > section')) panel.hidden = panel.id !== mode;
+  for (const tab of app.querySelectorAll<HTMLButtonElement>('[data-mode]')) tab.setAttribute('aria-pressed', String(tab.dataset.mode === mode));
 }
-
-/** Plays a clip full-window with all moves paused, then restores the current character's moves. */
-async function runCinematic(url: string): Promise<void> {
-  if (cinematic.playing) return;
-  gestures.setDefinitions([]); // nothing can fire during the cinematic
-  await cinematic.play(url);
-  if (character && !characterSelect.isOpen) selectCharacter(character);
+new CharacterSelect(document.querySelector<HTMLElement>('#character-screen')!, id => {
+  characterSelect.value = id; selectCharacter(); location.hash = 'combat';
+});
+window.addEventListener('hashchange', applyPage);
+applyPage();
+// Move the actual status elements (not copies) beside the camera so live
+// feedback never scrolls away with setup controls or accumulated results.
+for (const id of ['demo-status', 'inspect-status', 'training-status']) {
+  document.querySelector('#live-feedback')!.appendChild(document.getElementById(id)!);
 }
+let lastVideoTime = -1;
+let frameId = 0;
+let starting = false;
+const retryCamera = document.querySelector<HTMLButtonElement>("#camera-retry")!;
+retryCamera.onclick = () => { void bootstrap(); };
 
-async function initDomainVideos(): Promise<void> {
-  try {
-    videoStore = await DomainVideoStore.open();
-    const slots = CHARACTERS.map((c) => {
-      const ultimate = characterMoves(c).ultimate;
-      return {
-        domainId: ultimate.id,
-        domainName: ultimate.name,
-        characterName: c.name,
-        color: c.color,
-        bundledUrl: findDomainVideo(c.id, ultimate.id),
-      };
-    });
-    const panel = new DomainVideoPanel(videoPanelHost, videoStore, slots);
-    panel.onPreview = runCinematic;
-    panel.onChange = () => void prepareDomainVideo(true);
-    await panel.refresh();
-    void prepareDomainVideo(true); // in case a character was picked before storage opened
-  } catch (err) {
-    console.error('Domain video storage unavailable', err);
-    videoPanelHost.textContent = `Domain video storage unavailable: ${String(err)}`;
+gestures.onEvent((event: GestureEvent) => {
+  if (event.type === 'confirmed') {
+    inputs.send(selectedCharacter, event.gesture, 'camera');
   }
-}
-
-/** Short learned/rule status of a move, for the select screen and move panel. */
-function moveStatus(gesture: GestureDefinition): string {
-  const n = LEARNED_MODEL.countFor(gesture.datasetLabel);
-  const need = SIGN_TUNING.learned.minSamples;
-  if (n >= need) return `learned (${n})`;
-  if (gesture.taughtOnly) return `teach it: record ${gesture.datasetLabel} (${n}/${need})`;
-  return `built-in sign (${n}/${need} recorded)`;
-}
-
-function selectCharacter(next: CharacterDefinition): void {
-  character = next;
-  characterMoveSlots = characterMoves(next);
-  gestures.setDefinitions(MOVE_SLOTS.map((slot) => characterMoveSlots![slot]));
-  movePanel.setCharacter(next, characterMoveSlots);
-  datasetPanel?.setLabelGroups(labelGroups());
-  void prepareDomainVideo();
-  try {
-    localStorage.setItem(CHARACTER_STORAGE_KEY, next.id);
-  } catch {
-    // Storage unavailable - the choice just won't be remembered.
-  }
-}
-
-function openCharacterSelect(): void {
-  gestures.setDefinitions([]); // nothing fires while choosing
-  characterSelect.open(character);
-}
-
-/** Recorder labels: the current character's moves first, then the others, then NONE. */
-function labelGroups(): LabelGroup[] {
-  const ordered = character ? [character, ...CHARACTERS.filter((c) => c !== character)] : CHARACTERS;
-  return [
-    ...ordered.map((c) => ({
-      name: c === character ? `${c.name} (playing)` : c.name,
-      labels: MOVE_SLOTS.map((slot) => characterMoves(c)[slot].datasetLabel),
-    })),
-    { name: 'Other', labels: [...EXTRA_DATASET_LABELS] },
-  ];
-}
-
-characterSelect.onSelect = selectCharacter;
-movePanel.onChangeCharacter = openCharacterSelect;
-window.addEventListener('keydown', (e) => {
-  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
-  if ((e.key === 'c' || e.key === 'C') && !characterSelect.isOpen && !cinematic.playing) openCharacterSelect();
+  // Combat can later consume the selected character and this gesture event.
+  console.log(`[gesture] ${event.type}: ${event.gesture}`);
 });
 
-let lastVideoTime = -1;
-let lastFrame: HandFrame | null = null;
+// Simple rolling FPS estimate for the debug HUD.
+let lastFrameTime = performance.now();
+let fps = 0;
 
-function loop(): void {
-  const video = camera.video;
-  if (camera.isRunning && camera.hasFrame && tracker.isReady && video.currentTime !== lastVideoTime) {
-    lastVideoTime = video.currentTime;
-    renderer.resize(camera.width, camera.height);
-    const frame = tracker.detect(video, performance.now());
-    if (frame) {
-      lastFrame = frame;
-      gestures.update(frame);
-      renderer.draw(frame);
-    }
-    fps.tick(performance.now());
-  }
-  const running = camera.isRunning;
-  const snapshot = running ? gestures.snapshot() : null;
-  hud.update({ status: statusText(), fps: fps.fps, frame: running ? lastFrame : null, gesture: snapshot });
-  gestureDebug.update(snapshot);
-  movePanel.update(snapshot);
-  requestAnimationFrame(loop);
-}
-
-function statusText(): string {
-  const mp = tracker.isReady ? `MediaPipe: ${tracker.delegate}` : 'MediaPipe: loading...';
-  const cam = camera.isRunning ? `Camera: ${camera.label} ${camera.width}x${camera.height}` : 'Camera: off';
-  return `${mp}\n${cam}`;
-}
-
-async function startCamera(): Promise<void> {
-  lastFrame = null;
-  gestures.reset();
-  renderer.clear();
-  overlay.show('Starting camera...');
-  try {
-    await camera.start();
-    stage.style.aspectRatio = `${camera.width} / ${camera.height}`;
-    fps.reset();
-    if (tracker.isReady) overlay.hide();
-    else overlay.show('Loading hand tracking model...');
-  } catch (err) {
-    showCameraError(err);
+function updateFps(now: number): void {
+  const delta = now - lastFrameTime;
+  lastFrameTime = now;
+  if (delta > 0) {
+    const instantaneous = 1000 / delta;
+    fps = fps === 0 ? instantaneous : fps * 0.9 + instantaneous * 0.1;
   }
 }
 
-function showCameraError(err: unknown): void {
-  const message =
-    err instanceof CameraError
-      ? err.browserError
-        ? `${err.message}\n\nBrowser error: ${err.browserError}`
-        : err.message
-      : `Camera error: ${String(err)}`;
-  console.warn('Camera unavailable:', err);
-  lastFrame = null;
-  gestures.reset();
-  renderer.clear();
-  overlay.show(message, { label: 'Retry', onClick: () => void startCamera() });
-}
+function detectionLoop(): void {
+  if (videoEl.currentTime === lastVideoTime) { frameId = requestAnimationFrame(detectionLoop); return; }
+  lastVideoTime = videoEl.currentTime;
+  const now = performance.now();
+  updateFps(now);
 
-camera.onDisconnect = showCameraError;
+  const result = tracker.detectForVideo(videoEl, now);
+  renderer.render(result);
+  if (!demo.active && !trainer.active) inspector.update(result.hands, videoEl.videoWidth / videoEl.videoHeight, characterGestures(selectedCharacter), now);
 
-tracker
-  .init()
-  .then(() => {
-    if (camera.isRunning) overlay.hide();
-  })
-  .catch((err: unknown) => {
-    console.error('Failed to initialize HandTracker', err);
-    overlay.show(`Hand tracking failed to load: ${String(err)}`, {
-      label: 'Reload',
-      onClick: () => location.reload(),
-    });
+  if (!demo.active) trainer.update(result.hands, now, videoEl.videoWidth / videoEl.videoHeight);
+  const gestureState = demo.update(result.hands, now, videoEl.videoWidth / videoEl.videoHeight) ?? gestures.update(
+    trainer.active ? [] : result.hands,
+    now,
+  );
+
+  hud.update({
+    handsDetected: result.hands.length,
+    handedness: result.hands.map((h) => `${h.handedness} (${(h.handednessScore * 100).toFixed(0)}%)`),
+    fps,
+    candidateGesture: gestureState.candidateGesture ? GESTURE_LABELS[gestureState.candidateGesture] : null,
+    confirmedGesture: gestureState.confirmedGesture ? GESTURE_LABELS[gestureState.confirmedGesture] : null,
+    holdProgress: gestureState.holdProgress,
   });
 
-async function initDataset(): Promise<void> {
-  try {
-    const { manager, startup } = await GestureDatasetManager.create();
-    const recorder = new GestureRecorder(
-      () => (camera.isRunning ? lastFrame : null),
-      (sample) => manager.add(sample),
-    );
-    const panel = new DatasetPanel(app, manager, recorder, labelGroups());
-    datasetPanel = panel;
-    await panel.refreshCounts();
+  frameId = requestAnimationFrame(detectionLoop);
+}
 
-    // Learned gestures (e.g. Piercing Blood) train on the recorded samples, and
-    // retrain whenever the dataset changes. Debounced: a 100-sample recording
-    // saves one sample at a time.
-    let retrain: ReturnType<typeof setTimeout> | undefined;
-    const train = async () => {
-      LEARNED_MODEL.train(await manager.all());
-      movePanel.refreshStatus();
-    };
-    manager.onChange(() => {
-      clearTimeout(retrain);
-      retrain = setTimeout(() => void train(), 500);
-    });
-    await train();
-    panel.setStatus(datasetStartupMessage(startup));
+async function bootstrap() {
+  if (starting) return;
+  starting = true;
+  retryCamera.hidden = true;
+  hud.setMessage("Loading hand-tracking model…");
+
+  try {
+    if (!tracker.isReady) await tracker.initialize();
   } catch (err) {
-    console.error('Gesture dataset storage unavailable', err);
-    const note = document.createElement('p');
-    note.className = 'dataset-panel error';
-    note.textContent = `Gesture dataset storage unavailable: ${String(err)}`;
-    app.appendChild(note);
+    console.error("Failed to load HandLandmarker model:", err);
+    hud.setMessage("Hand-tracking model failed to load. Try again.");
+    starting = false;
+    retryCamera.hidden = false;
+    return;
   }
-}
 
-function datasetStartupMessage({ storedCount, seededFromBundle, persistent }: DatasetStartupInfo): string {
-  const source = seededFromBundle
-    ? `Loaded ${seededFromBundle} samples from data/gesture-dataset.json.`
-    : `Loaded ${storedCount} samples from browser storage.`;
-  const keep = persistent === false ? ' (browser did not grant persistent storage - export regularly)' : '';
-  return source + keep;
-}
+  hud.setMessage("Requesting camera access…");
 
-void startCamera();
-void initDomainVideos();
-void initDataset().then(() => characterSelect.open(findCharacter(loadCharacterId())));
-requestAnimationFrame(loop);
-
-function loadCharacterId(): string | null {
   try {
-    return localStorage.getItem(CHARACTER_STORAGE_KEY);
-  } catch {
-    return null;
+    await camera.start();
+  } catch (err) {
+    console.error("Failed to start camera:", err);
+    starting = false;
+    retryCamera.hidden = false;
+
+    if (err instanceof DOMException && err.name === "NotAllowedError") {
+      hud.setMessage("Camera permission denied. Allow camera access and reload the page.");
+    } else if (err instanceof DOMException && err.name === "NotFoundError") {
+      hud.setMessage("No camera found. Connect a webcam and reload the page.");
+    } else if (err instanceof DOMException && err.name === "NotReadableError") {
+      hud.setMessage("Camera could not start. Close other camera apps or tabs, check your camera connection, then click Retry camera. (NotReadableError)");
+    } else if (err instanceof DOMException && err.name === "AbortError") {
+      hud.setMessage("Camera startup was interrupted. Click Retry camera. (AbortError)");
+    } else {
+      hud.setMessage(`Camera could not start: ${err instanceof Error ? `${err.name}: ${err.message}` : String(err)}. Click Retry camera.`);
+    }
+    return;
   }
+
+  starting = false;
+  lastVideoTime = -1;
+  trainer.ready();
+  demo.ready();
+  const { videoWidth, videoHeight } = videoEl;
+  videoEl.parentElement!.style.aspectRatio = `${videoWidth} / ${videoHeight}`;
+  renderer.resize(videoWidth, videoHeight);
+  canvasEl.width = videoWidth;
+  canvasEl.height = videoHeight;
+
+  frameId = requestAnimationFrame(detectionLoop);
 }
+
+bootstrap();
+
+
+
+let lastCombatTime = performance.now();
+const combatTimer = window.setInterval(() => {
+  const now = performance.now();
+  if (app.dataset.mode === 'combat' && !document.hidden) combat.tick(Math.min(now - lastCombatTime, 250));
+  lastCombatTime = now;
+  combatPanel.render();
+}, 100);
+const removeLogoCursor = installLogoCursor();
+function cleanup(): void {
+  removeLogoCursor();
+  clearInterval(combatTimer);
+  window.removeEventListener('hashchange', applyPage);
+  cancelAnimationFrame(frameId);
+  camera.stop();
+  tracker.dispose();
+}
+window.addEventListener("pagehide", cleanup);
+if (import.meta.hot) import.meta.hot.dispose(() => {
+  window.removeEventListener("pagehide", cleanup);
+  cleanup();
+});
