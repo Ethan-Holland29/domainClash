@@ -1,29 +1,27 @@
-/** Hit points that can never go below 0 or above max. */
 export class HealthSystem {
-  readonly max: number;
-  private hp: number;
+  max: number;
+  current: number;
 
-  constructor(max: number) {
+  constructor(max: number, current: number = max) {
     this.max = max;
-    this.hp = max;
+    this.current = current;
   }
 
-  get current(): number {
-    return this.hp;
-  }
-
-  get isDead(): boolean {
-    return this.hp <= 0;
-  }
-
-  /** Applies damage, clamped at 0. Returns the damage actually dealt. */
   damage(amount: number): number {
-    const dealt = Math.min(this.hp, Math.max(0, amount));
-    this.hp -= dealt;
-    return dealt;
+    const applied = Math.min(this.current, Number.isFinite(amount) ? Math.max(0, amount) : 0);
+    this.current = Math.max(0, this.current - applied);
+    return applied;
+  }
+
+  isDead(): boolean {
+    return this.current <= 0;
+  }
+
+  ratio(): number {
+    return this.max <= 0 ? 0 : this.current / this.max;
   }
 
   reset(): void {
-    this.hp = this.max;
+    this.current = this.max;
   }
 }

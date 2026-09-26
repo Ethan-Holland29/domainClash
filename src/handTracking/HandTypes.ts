@@ -1,58 +1,10 @@
-/**
- * A single normalized landmark in display space: x/y in 0..1 across the
- * video frame as the user sees it (already mirrored if the view is mirrored).
- * z is relative depth, with the wrist as origin (smaller = closer to camera).
- */
-export interface Landmark {
+export interface Vec3 {
   x: number;
   y: number;
   z: number;
 }
 
-/** The user's actual hand (corrected for mirroring). */
-export type Handedness = 'Left' | 'Right' | 'Unknown';
-
-/** One tracked hand: 21 landmarks plus handedness info. */
-export interface TrackedHand {
-  landmarks: Landmark[];
-  /**
-   * The same 21 points in real-world metres, centred on the hand. Scale- and
-   * distance-independent, so it is the right space for finger angles.
-   * Mirrored along x like `landmarks` when the view is mirrored.
-   */
-  worldLandmarks: Landmark[];
-  handedness: Handedness;
-  /** MediaPipe's confidence in the handedness classification (0..1). */
-  handednessScore: number;
-}
-
-/** Result of processing a single video frame. */
-export interface HandFrame {
-  hands: TrackedHand[];
-  timestampMs: number;
-  /** Video width / height, to convert normalized x/y into equal units. */
-  aspectRatio: number;
-}
-
-export interface HandTrackerOptions {
-  wasmPath: string;
-  modelPath: string;
-  numHands: number;
-  minHandDetectionConfidence: number;
-  minHandPresenceConfidence: number;
-  minTrackingConfidence: number;
-  /** Mirror landmarks horizontally to match a mirrored (selfie) display. */
-  mirrored: boolean;
-  /**
-   * Swap MediaPipe's Left/Right labels. Verified with tasks-vision 1.0.1 on
-   * raw (unmirrored) frames: labels already match the user's real hand, so
-   * this defaults to false. Flip it if a camera/driver pre-mirrors frames.
-   */
-  invertHandedness: boolean;
-}
-
-/** MediaPipe hand landmark indices. */
-export const HandLandmarkIndex = {
+export const LandmarkIndex = {
   WRIST: 0,
   THUMB_CMC: 1,
   THUMB_MCP: 2,
@@ -76,20 +28,19 @@ export const HandLandmarkIndex = {
   PINKY_TIP: 20,
 } as const;
 
-export const LANDMARKS_PER_HAND = 21;
+export type LandmarkName = keyof typeof LandmarkIndex;
 
-/** Pairs of landmark indices forming the hand skeleton. */
-export const HAND_CONNECTIONS: ReadonlyArray<readonly [number, number]> = [
-  // Thumb
-  [0, 1], [1, 2], [2, 3], [3, 4],
-  // Index
-  [0, 5], [5, 6], [6, 7], [7, 8],
-  // Middle
-  [9, 10], [10, 11], [11, 12],
-  // Ring
-  [13, 14], [14, 15], [15, 16],
-  // Pinky
-  [0, 17], [17, 18], [18, 19], [19, 20],
-  // Palm
-  [5, 9], [9, 13], [13, 17],
-];
+export type Handedness = "Left" | "Right" | "Unknown";
+
+export interface TrackedHand {
+  landmarks: Vec3[];
+  handedness: Handedness;
+  score: number;
+  worldLandmarks?: Vec3[];
+}
+
+export interface HandFrame {
+  hands: TrackedHand[];
+  timestampMs: number;
+  receivedAtMs?: number;
+}

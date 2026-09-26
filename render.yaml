@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: domainclash-3combined
+    runtime: node
+    plan: free
+    repo: https://github.com/Ethan-Holland29/domainClash
+    branch: domainclash-3combined
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 24.21.0
+      - key: HOST
+        value: 0.0.0.0
