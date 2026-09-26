@@ -72,7 +72,15 @@ export class Arena extends DurableObject {
  message(ws,raw){
   const client=this.clients.get(ws);if(!client)return;const now=Date.now();
   if(now-client.windowAt>=1000){client.windowAt=now;client.count=0;}
-  if(++client.count>40||typeof raw!=='string'||raw.length>35000){this.close(ws,1008,'Invalid or excessive input');return;}
+  if(++client.count>40){this.close(ws,1008,'Excessive input');return;}
+  if(raw instanceof ArrayBuffer){
+   const room=client.session&&this.rooms.get(client.session.code);
+   if(!room||!this.sessions.has(client.token)||!room.match.players[client.session.seat]||raw.byteLength>30000||!validFrame(Buffer.from(raw))){this.close(ws,1008,'Invalid video frame');return;}
+   if(room.match.phase==='finished')return;
+   for(const [peer,target] of this.clients)if(peer!==ws&&target.session?.code===client.session.code&&target.session.seat!==client.session.seat&&now-target.lastAck<2000&&!target.videoPending){try{target.videoPending=true;peer.send(raw);}catch{this.close(peer,1011,'Video connection ended');}}
+   return;
+  }
+  if(typeof raw!=='string'||raw.length>35000){this.close(ws,1008,'Invalid input');return;}
   let message;try{message=JSON.parse(raw);}catch{this.close(ws,1008,'Invalid JSON');return;}
   if(!message||typeof message!=='object'||Array.isArray(message)){this.close(ws,1008,'Invalid message');return;}
   if(!client.session){
@@ -84,6 +92,7 @@ export class Arena extends DurableObject {
   const room=this.rooms.get(client.session.code);
   if(!room||!this.sessions.has(client.token)){this.close(ws,1008,'Room expired');return;}
   room.match.tick(now);if(!room.match.players[client.session.seat]){this.close(ws,1008,'Session expired');return;}room.match.players[client.session.seat].lastSeen=now;
+  if(message.type==='video-ack'){client.videoPending=false;return;}
   if(message.type==='pong'){client.lastAck=now;return;}
   const error=this.action(room,client.session.seat,message.type,message.body||{},now);
   this.send(ws,{type:'ack',requestId:message.requestId,error:error||null});

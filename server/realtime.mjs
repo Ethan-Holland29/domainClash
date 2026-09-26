@@ -1,5 +1,6 @@
 import {WebSocketServer,WebSocket} from 'ws';
 import {signal,snapshot} from './protocol.mjs';
+import {validFrame} from './video.mjs';
 export {signal,snapshot} from './protocol.mjs';
 export function attachRealtime(server,rooms,sessions){
  const wss=new WebSocketServer({noServer:true,maxPayload:35000,perMessageDeflate:false});
@@ -23,8 +24,15 @@ export function attachRealtime(server,rooms,sessions){
    send({type:'state',state});
    if(performance.now()-lastPing>4000){lastPing=performance.now();ws.ping();}
   },50);timer.unref();
-  ws.on('message',raw=>{
+  ws.on('message',(raw,isBinary)=>{
    const now=performance.now();if(now-windowAt>1000){windowAt=now;count=0;}if(++count>40){ws.close(1008,'Too many inputs');return;}
+   if(isBinary){
+    const room=session&&rooms.get(session.code);
+    if(!room||!sessions.has(token)||!room.match.players[session.seat]||raw.length>30000||!validFrame(raw)){ws.close(1008,'Invalid video frame');return;}
+    if(room.match.phase==='finished')return;
+    for(const peer of wss.clients){const target=sessions.get(peer.sessionToken);if(peer!==ws&&target?.code===session.code&&target.seat!==session.seat&&peer.readyState===WebSocket.OPEN&&peer.bufferedAmount<32000&&!peer.videoPending){peer.videoPending=true;peer.send(raw,{binary:true});}}
+    return;
+   }
    let message;try{message=JSON.parse(raw.toString());}catch{ws.close(1008,'Invalid message');return;}
    if(!message||typeof message!=='object')return;
    if(!session){
@@ -34,6 +42,7 @@ export function attachRealtime(server,rooms,sessions){
    }
    const room=rooms.get(session.code);if(!room||!sessions.has(token)){ws.close(1008,'Room expired');return;}
    const m=room.match;m.tick(now);if(!m.players[session.seat]){ws.close(1008,'Session expired');return;}m.players[session.seat].lastSeen=now;
+   if(message.type==='video-ack'){ws.videoPending=false;return;}
    let error;const body=message.body||{};
    if(message.type==='cast')error=m.cast(session.seat,typeof body.id==='string'?body.id:'',now,body);
    else if(message.type==='ready')error=m.ready(session.seat,now,body);

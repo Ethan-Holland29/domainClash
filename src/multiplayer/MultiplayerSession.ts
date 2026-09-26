@@ -7,9 +7,13 @@ import {CombatManager,type CombatAction} from '../combat/CombatManager';
 import {CombatPanel} from '../combat/CombatPanel';
 import {GESTURE_LABELS} from '../handTracking/GestureTypes';
 import {signHint} from '../integration/Signs';
+import {validOrigin,type HandOrigin} from '../effects/MovePalette';
 
 export class MultiplayerSession {
  active=false;
+ handOrigin:HandOrigin|null=null;
+ onCast:(action:CombatAction,origin:HandOrigin,remote:boolean)=>void=()=>{};
+ onReset:()=>void=()=>{};
  private lastViewAt=0;
  readonly client=new MultiplayerClient();
  private peer:PeerCamera;
@@ -37,6 +41,7 @@ export class MultiplayerSession {
   this.peer.onFrame=frame=>{const canvas=this.remote.querySelector('canvas')!;canvas.hidden=!frame;if(frame){canvas.width=frame.width;canvas.height=frame.height;canvas.getContext('2d')!.drawImage(frame,0,0);frame.close();}};
   this.client.onState=s=>this.update(s);this.client.onStatus=text=>{this.lobby.querySelector('.lobby-status')!.textContent=text;this.screen.querySelector('.mp-selection-status')!.textContent=text;if(this.active&&this.lastPhase!=='waiting')app.querySelector('#combat-status')!.textContent=text;};
   this.client.onExpired=()=>void this.leave();
+  this.client.onEvent=e=>{const s=this.client.state;if(e.type==='cast'&&e.id&&s&&e.round===s.round&&s.now-(e.at??0)<1800)this.onCast(e.id,validOrigin(e.origin)??{x:.5,y:.6},e.owner!==s.seat);};
   const draw=()=>{if(this.active&&this.client.state){this.peer.update(this.client.state);}this.frame=requestAnimationFrame(draw);};draw();
  }
  private selectDesired(){if(this.selectionJob)return this.selectionJob;this.selectionJob=(async()=>{try{let sent='';while(this.active&&sent!==this.desired){sent=this.desired;const ok=await this.client.action('select',{id:sent,round:this.client.state?.round});if(!ok)break;}}finally{this.selectionJob=null;}})();return this.selectionJob;}
@@ -48,7 +53,7 @@ export class MultiplayerSession {
   catch(e){this.lobby.querySelector('.lobby-status')!.textContent=(e as Error).message;}
   finally{this.joining=false;this.lobby.querySelectorAll('button').forEach(b=>b.disabled=false);}
  }
- async attack(action:CombatAction){const state=this.client.state;if(!state||state.phase!=='playing')return;await this.client.action('cast',{id:action,round:state.round});}
+ async attack(action:CombatAction){const state=this.client.state;if(!state||state.phase!=='playing')return;await this.client.action('cast',{id:action,round:state.round,origin:this.handOrigin});}
  telemetry(hands:number,fps:number,camera:boolean){if(!this.active||performance.now()-this.lastTelemetry<1000)return;this.lastTelemetry=performance.now();void this.client.action('telemetry',{hands,fps,camera});}
  private hero(seat:number,state:MatchSnapshot){
   const target=this.screen.querySelector<HTMLElement>(`[data-seat="${seat}"]`)!,player=state.players[seat],c=CHARACTERS.find(c=>c.id===player?.characterId);
@@ -62,7 +67,7 @@ export class MultiplayerSession {
   const now=performance.now();if(this.lastPhase===state.phase&&this.lastRound===state.round&&now-this.lastViewAt<100)return;this.lastViewAt=now;
   const selection=state.phase==='waiting';
   if(this.lastPhase!==state.phase||this.lastRound!==state.round){
-   this.reset();this.lastPhase=state.phase;this.lastRound=state.round;
+   this.reset();this.onReset();this.lastPhase=state.phase;this.lastRound=state.round;
    const own=state.players[state.seat];if(own){this.choose(own.characterId);this.desired=own.characterId;}
   }
   this.app.dataset.multiplayer='true';this.app.dataset.seat=String(state.seat);this.app.dataset.mode=selection?'selection':'combat';this.app.dataset.page='combat';
@@ -92,6 +97,6 @@ export class MultiplayerSession {
    this.app.querySelector('#duel-turn')!.textContent=state.phase==='countdown'?`START IN ${Math.max(1,Math.ceil((state.startedAt-state.now)/1000))}`:state.phase==='finished'?`${state.winner===null?'DRAW':`P${state.winner+1} WINS`} / ${state.players.every(Boolean)?'RETURNING TO SELECT':state.reason+' — Leave match'}`:`TURN ${g.turnNumber} / P${g.turn==='player'?1:2}`;
   }
  }
- async leave(){this.active=false;this.peer.stop();await this.client.leave();this.panel.networkSend=null;delete this.app.dataset.multiplayer;delete this.app.dataset.seat;this.screen.hidden=true;this.remote.hidden=true;this.app.querySelector<HTMLElement>('#leave-room')!.hidden=true;this.app.querySelector<HTMLElement>('.topbar a[href="#characters"]')!.hidden=false;this.app.querySelector<HTMLSelectElement>('#character')!.disabled=false;this.combat.reset();location.hash='characters';window.dispatchEvent(new Event('hashchange'));}
+ async leave(){this.active=false;this.onReset();this.peer.stop();await this.client.leave();this.panel.networkSend=null;delete this.app.dataset.multiplayer;delete this.app.dataset.seat;this.screen.hidden=true;this.remote.hidden=true;this.app.querySelector<HTMLElement>('#leave-room')!.hidden=true;this.app.querySelector<HTMLElement>('.topbar a[href="#characters"]')!.hidden=false;this.app.querySelector<HTMLSelectElement>('#character')!.disabled=false;this.combat.reset();location.hash='characters';window.dispatchEvent(new Event('hashchange'));}
  dispose(){cancelAnimationFrame(this.frame);this.peer.stop();void this.client.leave();}
 }

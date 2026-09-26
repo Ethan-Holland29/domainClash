@@ -1,7 +1,8 @@
 import type {CombatAction as AbilityId} from '../combat/CombatManager';
+import type {HandOrigin} from '../effects/MovePalette';
 export interface NetDomain {id:AbilityId;owner:number;castAt:number;activeAt:number;endAt:number}
 export interface NetPlayer {characterId:string;ready:boolean;telemetry:{hands:number;fps:number;camera:boolean}}
-export interface NetEvent {seq:number;type:string;owner?:number;target?:number;id?:AbilityId;damage?:number;winner?:number|null;reason?:string}
+export interface NetEvent {seq:number;type:string;owner?:number;target?:number;id?:AbilityId;damage?:number;winner?:number|null;reason?:string;origin?:HandOrigin;at?:number;round?:number}
 export interface MatchSnapshot {code:string;seat:number;round:number;game:any;phase:'waiting'|'countdown'|'playing'|'finished';now:number;startedAt:number;winner:number|null;reason:string;players:(NetPlayer|null)[];domains:NetDomain[];events:NetEvent[];peerSignal?:{seq:number;type:"offer"|"answer";sdp:string}|null;cameraActive?:boolean[]}
 export class MultiplayerClient {
  private socket:WebSocket|null=null;private live=false;private reconnectTimer=0;private nextRequest=0;
@@ -13,6 +14,9 @@ export class MultiplayerClient {
  onEvent:(event:NetEvent)=>void=()=>{};
  onStatus:(text:string)=>void=()=>{};
  onExpired:()=>void=()=>{};
+ onVideoFrame:(data:ArrayBuffer)=>void=()=>{};
+ get liveVideo(){return this.live&&this.socket?.readyState===WebSocket.OPEN;}
+ sendVideo(frame:Blob):boolean{if(!this.liveVideo)return false;if(this.socket!.bufferedAmount<32000&&frame.size<=30000)this.socket!.send(frame);return true;}
  async connect(code?:string):Promise<void>{
   await this.leave();const generation=++this.generation;
   const result=await this.request(code?'join':'create',code?{code}:{});
@@ -31,10 +35,11 @@ export class MultiplayerClient {
   for(const event of state.events)if(event.seq>this.seq){this.seq=event.seq;this.onEvent(event);}
  }
  private openSocket(generation:number):void {
-  const socket=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/api/live');this.socket=socket;
+  const socket=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/api/live');this.socket=socket;socket.binaryType='arraybuffer';
   socket.onopen=()=>{if(generation===this.generation)socket.send(JSON.stringify({type:'auth',token:this.token}));else socket.close();};
   socket.onmessage=event=>{
    if(generation!==this.generation)return;
+   if(event.data instanceof ArrayBuffer){if(socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify({type:'video-ack'}));this.onVideoFrame(event.data);return;}
    try{const message=JSON.parse(event.data);
     if(message.type==='connected'){this.live=true;this.transport='Live connection';}
     if(message.type==='ping')socket.send(JSON.stringify({type:'pong'}));

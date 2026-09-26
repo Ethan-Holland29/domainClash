@@ -6,7 +6,7 @@ const players=[],sockets=[];
 async function api(route,body,token){const response=await fetch(base+'/api/'+route,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(8000)});return {status:response.status,data:await response.json()};}
 async function live(token){
  const ws=new WebSocket(base.replace(/^http/,'ws')+'/api/live');sockets.push(ws);const inbox=[];
- ws.on('message',raw=>{const message=JSON.parse(raw.toString());if(message.type==='ping')ws.send(JSON.stringify({type:'pong'}));else inbox.push(message);});
+ ws.on('message',(raw,binary)=>{if(binary){inbox.push({type:'video',bytes:raw.length});ws.send(JSON.stringify({type:'video-ack'}));return;}const message=JSON.parse(raw.toString());if(message.type==='ping')ws.send(JSON.stringify({type:'pong'}));else inbox.push(message);});
  await new Promise((resolve,reject)=>{ws.once('open',resolve);ws.once('error',reject);});ws.send(JSON.stringify({type:'auth',token}));
  return {ws,inbox};
 }
@@ -19,16 +19,18 @@ try{
  assert.equal((await api('join',{code:a.data.code})).status,409);
  const [p1,p2]=await Promise.all(players.map(p=>live(p.token)));
  await until(()=>[p1,p2].every(p=>p.inbox.some(m=>m.type==='state')));
+ const jpeg=Buffer.from([255,216,255,192,0,8,8,0,1,0,1,1]);p1.ws.send(jpeg);await until(()=>p2.inbox.some(m=>m.type==='video'&&m.bytes===jpeg.length));
  for(const [i,id] of ['ryu','choso'].entries())assert.equal((await api('select',{id,round:1},players[i].token)).status,200);
  for(const p of players)assert.equal((await api('ready',{round:1},p.token)).status,200);
  await until(()=>[p1,p2].every(p=>p.inbox.some(m=>m.type==='state'&&m.state.phase==='playing')));
  assert.equal((await api('select',{id:'gojo',round:1},players[0].token)).status,409);
  assert.equal((await api('cast',{id:'CLEAVE',round:1},players[0].token)).status,409);
  assert.equal((await api('cast',{id:'BASIC_PUNCH',round:1},players[1].token)).status,409);
- assert.equal((await api('cast',{id:'GRANITE_BLAST',round:1},players[0].token)).status,200);
+ assert.equal((await api('cast',{id:'GRANITE_BLAST',round:1,origin:{x:.25,y:.6}},players[0].token)).status,200);
+ await until(()=>p2.inbox.some(m=>m.type==='state'&&m.state.events.some(e=>e.type==='cast'&&e.origin?.x===.25)));
  await until(()=>p2.inbox.some(m=>m.type==='state'&&m.state.game?.turn==='enemy'));
  assert.equal((await api('cast',{id:'PIERCING_BLOOD',round:1},players[1].token)).status,200);
  await until(()=>p1.inbox.some(m=>m.type==='state'&&m.state.game?.turnNumber>=2));
  const state=await api('state',undefined,players[1].token);assert.equal(state.data.seat,1);assert.equal(state.data.game.player.character.id,'ryu');assert.equal(state.data.game.opponent.character.id,'choso');
- console.log('PASS: public page, private rooms, authenticated live state, both confirmations, fighter lock, turn ownership and bidirectional attacks.');
+ console.log('PASS: public page, private rooms, authenticated live state, camera relay, both confirmations, fighter lock, turn ownership, effect anchors and bidirectional attacks.');
 }finally{for(const p of players)await api('leave',{},p.token).catch(()=>{});for(const ws of sockets)ws.terminate();}

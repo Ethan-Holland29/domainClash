@@ -19,9 +19,13 @@ import { CHARACTERS } from "./characters/Characters";
 import { characterGestures } from "./characters/CharacterTypes";
 import {MultiplayerSession} from './multiplayer/MultiplayerSession';
 import './multiplayer/multiplayer.css';
+import {BattleEffects} from './effects/BattleEffects';
+import type {HandOrigin} from './effects/MovePalette';
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 let multiplayer:MultiplayerSession|undefined;
+let effects:BattleEffects|undefined;
+let handOrigin:HandOrigin|null=null;
 
 app.innerHTML = `
   <div id="technique-reveal" aria-live="polite"></div><section id="character-screen" hidden></section>
@@ -84,10 +88,11 @@ inputs.subscribe(input => {
     return;
   }
   document.querySelector('#ability-status')!.textContent = `${selectedCharacter.name} — ${GESTURE_LABELS[input.gesture]} input received (${input.source === 'button' ? 'manual test' : 'camera'}). Practice input only.`;
+  effects?.play(input.gesture,handOrigin??{x:.5,y:.6});
 });
 let selectedCharacter = CHARACTERS[0];
 const combat = new CombatManager(selectedCharacter);
-const combatPanel = new CombatPanel(document.querySelector<HTMLElement>('#combat')!, combat, () => gestures.update([], performance.now()));
+const combatPanel = new CombatPanel(document.querySelector<HTMLElement>('#combat')!, combat, () => {gestures.update([], performance.now());effects?.clear();});
 const characterSelect = document.querySelector<HTMLSelectElement>('#character')!;
 characterSelect.innerHTML = CHARACTERS.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
 const focus=document.createElement('select');focus.id='gesture-target';focus.setAttribute('aria-label','Gesture focus');
@@ -95,6 +100,7 @@ const focusLabel=document.createElement('label');focusLabel.textContent='Gesture
 const gestures = new GestureRecognizer(hands => library.evaluate(hands, videoEl.videoWidth / videoEl.videoHeight || 4/3, focus.value ? [focus.value as typeof selectedCharacter.abilities[number]] : characterGestures(selectedCharacter)));
 focus.onchange=()=>gestures.update([],performance.now());
 function selectCharacter(): void {
+  effects?.clear();
   selectedCharacter = CHARACTERS.find(c => c.id === characterSelect.value)!;
   focus.replaceChildren(new Option('Auto (all moves)',''),...characterGestures(selectedCharacter).map(g=>new Option(GESTURE_LABELS[g],g)));
   combat.reset(selectedCharacter);
@@ -121,6 +127,7 @@ const demo = new RecognitionDemo(document.querySelector<HTMLElement>('#demo')!, 
   gestures.update([], performance.now());
 });
 function applyPage(): void {
+  effects?.clear();
   if(multiplayer?.active){if(multiplayer.client.state)multiplayer.update(multiplayer.client.state);return;}
   const selection = !location.hash || location.hash === '#characters';
   document.querySelector<HTMLElement>('#character-screen')!.hidden = !selection;
@@ -143,6 +150,10 @@ new CharacterSelect(document.querySelector<HTMLElement>('#character-screen')!, i
   characterSelect.value = id; selectCharacter(); location.hash = 'combat';
 });
 multiplayer=new MultiplayerSession(app,combat,combatPanel,videoEl,id=>{characterSelect.value=id;selectCharacter();},()=>bootstrap(),()=>gestures.update([],performance.now()));
+effects=new BattleEffects(app.querySelector('.camera-column .stage')!,app.querySelector('.remote-camera-column .stage')!);
+combat.onCast=(action,side)=>{if(!multiplayer?.active)effects?.play(action,side==='player'?(handOrigin??{x:.5,y:.6}):{x:.5,y:.3});};
+multiplayer.onCast=(action,origin,remote)=>effects?.play(action,origin,remote);
+multiplayer.onReset=()=>effects?.clear();
 window.addEventListener('hashchange', applyPage);
 applyPage();
 // Move the actual status elements (not copies) beside the camera so live
@@ -177,7 +188,7 @@ function updateFps(now: number): void {
   }
 }
 
-function detectionLoop(): void {
+async function detectionLoop(): Promise<void> {
   if(document.hidden||app.dataset.mode==='selection'){
     multiplayer?.telemetry(0,0,camera.isActive);
     frameId=requestAnimationFrame(detectionLoop);return;
@@ -187,7 +198,12 @@ function detectionLoop(): void {
   const now = performance.now();
   updateFps(now);
 
-  const result = tracker.detectForVideo(videoEl, now);
+  let result;
+  try{result=await tracker.detectForVideo(videoEl,now);}catch(error){if(disposed)return;console.warn('Tracking interrupted',error);hud.setMessage('Hand tracking interrupted. Click Retry camera to restart it.');retryCamera.hidden=false;return;}
+  if(!tracker.isReady)return;
+  const palm=result.hands.flatMap(h=>[0,5,9,13,17].map(i=>h.landmarks[i]));
+  handOrigin=palm.length?{x:palm.reduce((n,p)=>n+p.x,0)/palm.length,y:palm.reduce((n,p)=>n+p.y,0)/palm.length}:null;
+  if(multiplayer)multiplayer.handOrigin=handOrigin;
   multiplayer?.telemetry(result.hands.length,fps,true);
   renderer.render(result);
   if (!demo.active && !trainer.active) inspector.update(result.hands, videoEl.videoWidth / videoEl.videoHeight, characterGestures(selectedCharacter), now);
@@ -211,7 +227,7 @@ function detectionLoop(): void {
 }
 
 async function bootstrap() {
-  if((videoEl.srcObject as MediaStream|null)?.getVideoTracks().some(t=>t.readyState==='live'))return;
+  if(tracker.isReady&&(videoEl.srcObject as MediaStream|null)?.getVideoTracks().some(t=>t.readyState==='live'))return;
   if (starting) return;
   starting = true;
   retryCamera.hidden = true;
@@ -230,7 +246,7 @@ async function bootstrap() {
   hud.setMessage("Requesting camera access…");
 
   try {
-    await camera.start();
+    if(!camera.isActive)await camera.start();
   } catch (err) {
     console.error("Failed to start camera:", err);
     starting = false;
@@ -275,7 +291,10 @@ const combatTimer = window.setInterval(() => {
   if(!multiplayer?.active)combatPanel.render();
 }, 100);
 const removeLogoCursor = installLogoCursor();
+let disposed=false;
 function cleanup(): void {
+  disposed=true;
+  effects?.dispose();
   multiplayer?.dispose();
   removeLogoCursor();
   clearInterval(combatTimer);

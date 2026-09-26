@@ -49,6 +49,7 @@ const actionLabel = (action: CombatAction) => action === 'HOLLOW_PURPLE' ? 'Holl
 
 export interface PassivePopup { serial: number; side: Side; character: string; name: string; message: string; batch: number; }
 export class CombatManager {
+  onCast: (action:CombatAction,side:'player'|'enemy')=>void=()=>{};
   passivePopup: PassivePopup | null = null;
   private passiveQueue: PassivePopup[] = [];
   private passiveTime = 0;
@@ -231,6 +232,7 @@ export class CombatManager {
     const f = this.fighter(side); const enemy = this.fighter(this.other(side));
     const reason = this.unavailable(action, f);
     if (reason) { this.note(reason); return false; }
+    this.onCast(action,side);
     const ultimate = action === f.character.ultimate?.gesture || action === 'HOLLOW_PURPLE';
     const punch = action === 'BASIC_PUNCH';
     const cooldown = this.cooldownDuration(action, f);

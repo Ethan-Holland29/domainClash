@@ -27,7 +27,9 @@ Choose **Multiplayer**, create a private match and share the code. The other pla
 
 The server validates turn ownership, selected kit, meter, cooldowns and a shared one-second attack interval. Round numbers reject old inputs after a rematch. Idle/disconnected players time out; an abandoned match cannot continue accepting attacks. A match has a ten-minute time limit. Rooms and camera frames are transient, not persisted. Deployment/restart may end active rooms.
 
-Camera access can be granted before joining or retried during battle. Webcam video uses direct WebRTC when possible (up to 24 FPS, capped outgoing bitrate). Restrictive networks fall back to lower-rate authenticated JPEG previews. No microphone audio is captured. Landmark recognition happens locally. Video is shared only inside the private room; relay frames expire quickly and are not saved.
+Camera access can be granted before joining or retried during battle. Webcam video uses direct WebRTC when possible (up to 24 FPS), adapting resolution and bitrate to connection and encoder conditions. Restrictive networks use authenticated WebSocket JPEG previews at up to 12 FPS, with HTTP previews as a last resort. The relay permits one unacknowledged frame per receiver and the decoder keeps only the newest pending frame, preventing a stale-frame backlog. No microphone audio is captured. Landmark recognition runs locally in a background worker, with a compatibility fallback. Video is shared only inside the private room; relay frames are not saved. Internet latency and restrictive networks can still reduce smoothness.
+
+All 21 combat actions have distinct colored canvas effects and synthesized sound signatures. Effects originate at the tracked palm position, including on the opponent's screen, and a new move replaces the previous animation. Accepted server casts trigger multiplayer effects; rejected or stale casts do not. The top-bar Sound button saves the mute preference. Reduced-motion settings shorten and simplify effects.
 
 ## Local development
 
@@ -58,11 +60,11 @@ npx wrangler login
 npm run deploy
 ```
 
-No paid services or upgrades are required by this configuration. Free quotas are shared with other apps on the account; this is not a promise of unlimited traffic or guaranteed uptime. The JPEG fallback consumes more requests than direct WebRTC. At the free-plan limit, service can be unavailable until the quota resets. See [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages), [Workers limits](https://developers.cloudflare.com/workers/platform/limits/) and [Durable Objects pricing](https://developers.cloudflare.com/durable-objects/platform/pricing/).
+No paid services or upgrades are required by this configuration. Free quotas are shared with other apps on the account; this is not a promise of unlimited traffic or guaranteed uptime. Relayed video consumes more server resources than direct WebRTC. At the free-plan limit, service can be unavailable until the quota resets. See [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages), [Workers limits](https://developers.cloudflare.com/workers/platform/limits/) and [Durable Objects pricing](https://developers.cloudflare.com/durable-objects/platform/pricing/).
 
 ## Validation
 
-58 automated tests cover the original 49 combat cases plus gesture precedence, saved-sign fallback, human turn ownership, server cooldowns, round isolation, knockout/rematch, disconnect settlement, HTTP authentication and live WebSocket state. Production TypeScript/Vite and Wrangler bundle builds are checked. Browser checks cover room creation/joining, both confirmations, camera exchange, P1/P2 layout and locked fight controls.
+61 automated tests cover the original 49 combat cases plus gesture precedence, saved-sign fallback, human turn ownership, server cooldowns, round isolation, knockout/rematch, disconnect settlement, HTTP authentication, live WebSocket state, video relay isolation/backpressure and effect coverage/anchors. Production TypeScript/Vite and Wrangler bundle builds are checked. Browser checks cover room creation/joining, both confirmations, camera exchange, P1/P2 layout, locked fight controls, background tracking and effect previews.
 
 The deployed endpoint also passed `node scripts/smoke-multiplayer.mjs https://domainclash-integration.domainclash.workers.dev`. This creates two temporary players, verifies HTTP/WebSocket behavior and bidirectional attacks, then leaves their room.
 

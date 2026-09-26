@@ -1,5 +1,6 @@
 import {CombatManager} from '../src/combat/CombatManager.ts';
 import {CHARACTERS} from '../src/characters/Characters.ts';
+import {validOrigin} from '../src/effects/MovePalette.ts';
 const character=id=>CHARACTERS.find(c=>c.id===id);
 const serialize=f=>({...f,usedSummons:[...f.usedSummons],borrowedSummons:[...f.borrowedSummons],cooldowns:[...f.cooldowns]});
 export class Match {
@@ -18,7 +19,7 @@ export class Match {
   const side=seat===0?'player':'enemy',f=seat===0?this.game.player:this.game.opponent;
   if(this.game.turn!==side)return 'Wait for your turn';if(now-this.lastInput[seat]<1000)return 'Wait one second between attacks';
   const reason=this.game.unavailable(id,f);if(reason)return reason;
-  if(!this.game.attackFrom(seat,id))return 'Attack unavailable';this.lastInput[seat]=now;this.event('cast',{owner:seat,id});this.checkResult(now);return null;
+  if(!this.game.attackFrom(seat,id))return 'Attack unavailable';this.lastInput[seat]=now;this.event('cast',{owner:seat,id,origin:validOrigin(body.origin),at:now,round:this.round});this.checkResult(now);return null;
  }
  guard(){return 'Use your fighter’s assigned moves';}
  telemetry(seat,body){if(!this.players[seat])return 'Session expired';this.players[seat].telemetry={hands:Number.isFinite(body.hands)?Math.max(0,Math.min(2,Math.floor(body.hands))):0,fps:Number.isFinite(body.fps)?Math.max(0,Math.min(120,Math.round(body.fps))):0,camera:body.camera===true};return null;}
