@@ -62,7 +62,8 @@ export class Arena extends DurableObject {
  close(ws,code,reason){this.clients.delete(ws);try{ws.close(code,reason);}catch{}}
  upgrade(){
   if(this.clients.size>=160)return json(503,{error:'Arena is full. Try again shortly.'});
-  const pair=new WebSocketPair(),[client,server]=Object.values(pair);server.accept();
+  const pair=new WebSocketPair(),[client,server]=Object.values(pair);
+  server.binaryType='arraybuffer';server.accept();
   this.clients.set(server,{opened:Date.now(),lastAck:Date.now(),lastPing:0,lastSeq:0,signalSeq:0,session:null,token:'',count:0,windowAt:Date.now()});
   server.addEventListener('message',event=>this.message(server,event.data));
   server.addEventListener('close',()=>this.clients.delete(server));
