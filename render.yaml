@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: domainclash
+    runtime: node
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 24

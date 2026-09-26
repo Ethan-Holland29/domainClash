@@ -1,73 +1,64 @@
-import { HAND_CONNECTIONS, type HandFrame, type Handedness } from '../handTracking/HandTypes';
+import type { TrackedHand } from "../handTracking/HandTypes";
+import { LandmarkIndex } from "../handTracking/HandTypes";
 
-const HAND_COLORS: Record<Handedness, string> = {
-  Left: '#3fa9f5',
-  Right: '#f5a623',
-  Unknown: '#cccccc',
-};
+const CONNECTIONS: Array<[number, number]> = [
+  [0, 1], [1, 2], [2, 3], [3, 4],
+  [0, 5], [5, 6], [6, 7], [7, 8],
+  [0, 9], [9, 10], [10, 11], [11, 12],
+  [0, 13], [13, 14], [14, 15], [15, 16],
+  [0, 17], [17, 18], [18, 19], [19, 20],
+  [5, 9], [9, 13], [13, 17],
+];
 
-/**
- * Draws hand landmarks over the webcam feed. The canvas backing store is
- * sized to the video's native resolution and styled with the same
- * object-fit as the <video>, so normalized landmarks line up 1:1.
- */
 export class HandDebugRenderer {
-  private readonly ctx: CanvasRenderingContext2D;
+  private readonly canvas: HTMLCanvasElement;
 
   constructor(canvas: HTMLCanvasElement) {
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('2D canvas context unavailable');
-    this.ctx = ctx;
+    this.canvas = canvas;
   }
 
-  /** Match the canvas backing store to the video resolution. */
-  resize(width: number, height: number): void {
-    const { canvas } = this.ctx;
-    if (canvas.width !== width || canvas.height !== height) {
-      canvas.width = width;
-      canvas.height = height;
+  draw(video: HTMLVideoElement, hands: TrackedHand[]): void {
+    const ctx = this.canvas.getContext("2d");
+    if (!ctx) return;
+
+    const width = video.videoWidth || this.canvas.clientWidth;
+    const height = video.videoHeight || this.canvas.clientHeight;
+    if (this.canvas.width !== width || this.canvas.height !== height) {
+      this.canvas.width = width;
+      this.canvas.height = height;
+    }
+
+    if (this.canvas.parentElement) this.canvas.parentElement.style.aspectRatio = `${width} / ${height}`;
+    ctx.clearRect(0, 0, width, height);
+
+    for (const hand of hands) {
+      const color = hand.handedness === "Left" ? "#7ee0ff" : "#ffb347";
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3;
+      ctx.lineCap = "round";
+
+      for (const [a, b] of CONNECTIONS) {
+        const pa = hand.landmarks[a];
+        const pb = hand.landmarks[b];
+        ctx.beginPath();
+        ctx.moveTo(pa.x * width, pa.y * height);
+        ctx.lineTo(pb.x * width, pb.y * height);
+        ctx.stroke();
+      }
+
+      for (const point of hand.landmarks) {
+        ctx.fillStyle = point === hand.landmarks[LandmarkIndex.WRIST] ? "#fff" : color;
+        ctx.beginPath();
+        ctx.arc(point.x * width, point.y * height, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   }
 
   clear(): void {
-    this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
-  }
-
-  draw(frame: HandFrame): void {
-    const { ctx } = this;
-    const { width: w, height: h } = ctx.canvas;
-    const scale = Math.max(w, h) / 1280;
-    this.clear();
-
-    for (const hand of frame.hands) {
-      const color = HAND_COLORS[hand.handedness];
-      const pts = hand.landmarks;
-
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 3 * scale;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      for (const [a, b] of HAND_CONNECTIONS) {
-        ctx.moveTo(pts[a].x * w, pts[a].y * h);
-        ctx.lineTo(pts[b].x * w, pts[b].y * h);
-      }
-      ctx.stroke();
-
-      ctx.fillStyle = '#ffffff';
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 2 * scale;
-      for (const p of pts) {
-        ctx.beginPath();
-        ctx.arc(p.x * w, p.y * h, 4 * scale, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-      }
-
-      const wrist = pts[0];
-      ctx.font = `bold ${Math.round(18 * scale)}px system-ui, sans-serif`;
-      ctx.fillStyle = color;
-      ctx.textAlign = 'center';
-      ctx.fillText(hand.handedness, wrist.x * w, wrist.y * h + 28 * scale);
-    }
+    const ctx = this.canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   }
 }
+

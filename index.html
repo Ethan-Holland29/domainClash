@@ -1,13 +1,17 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DomainClash</title>
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
-</html>
+<head><meta charset="UTF-8"/><link rel="icon" type="image/svg+xml" href="/favicon.svg"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><meta name="description" content="Jujutsu-inspired real-time webcam effects. Cast cursed techniques from your own hands."/><title>DomainClash · Cursed Technique Studio</title></head>
+<body><main id="app"><div class="stage">
+  <header class="toolbar"><a class="wordmark" href="/">DOMAIN<span>CLASH</span><small>CURSED TECHNIQUE STUDIO</small></a><nav aria-label="Studio controls"><button id="multiplayer">Multiplayer</button><button id="mode">Free cast</button><button id="camera-toggle">Enable camera</button><button id="tracking-retry" hidden>Retry hand tracking</button><button id="mute" aria-pressed="false">Sound on</button><button id="debug-toggle" aria-pressed="false">Debug</button><button id="guide">Move guide</button><button id="pause">Pause</button><button id="reset-effects">Reset</button></nav></header>
+  <section class="camera-stage" aria-label="Live camera effects">
+    <canvas id="game-canvas" aria-label="Mirrored webcam with hand-anchored cursed technique effects"></canvas>
+    <video id="webcam" playsinline muted autoplay aria-hidden="true"></video>
+    <div class="frame-top"><span class="live-dot"></span><span id="tracking-badge">CAMERA OFF</span><span class="private-label">ON-DEVICE / PRIVATE</span></div>
+    <div class="frame-corner tl"></div><div class="frame-corner tr"></div><div class="frame-corner bl"></div><div class="frame-corner br"></div>
+    <div id="game-hud"></div><div id="debug-hud" hidden></div>
+  </section>
+  <div class="dock-nav"><button id="moves-up" aria-label="Previous three moves">↑</button><span id="move-page" role="status"></span><button id="moves-down" aria-label="Next three moves">↓</button></div>
+  <section class="technique-dock" aria-label="Techniques: scroll vertically to change three visible moves"></section>
+  <p id="network-status" role="status"></p><p id="camera-status" role="status">Camera off. Enable it here or when joining a match.</p><p id="status" role="status">Your camera is the scene. Your hands are the source.</p>
+  <div id="screen-overlay" class="screen-overlay"><div class="overlay-card" id="overlay-card" role="dialog" aria-modal="true" aria-label="Studio menu"></div></div>
+</div></main><script type="module" src="/src/main.ts"></script></body></html>

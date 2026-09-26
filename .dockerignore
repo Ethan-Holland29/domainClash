@@ -1,0 +1,7 @@
+node_modules
+.test-build
+dist
+.git
+*.py
+artifacts
+.env*
