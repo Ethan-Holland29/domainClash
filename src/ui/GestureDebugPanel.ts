@@ -5,7 +5,7 @@ const DETAILED_COUNT = 2;
 
 /**
  * Debug view explaining why each gesture passes or fails: every check with
- * its 0..1 score and measured value. Toggle with the "D" key.
+ * its 0..1 score and measured value. Part of debug mode (key D).
  */
 export class GestureDebugPanel {
   private readonly element: HTMLDivElement;
@@ -16,9 +16,11 @@ export class GestureDebugPanel {
     this.element = document.createElement('div');
     this.element.className = 'gesture-debug';
     parent.appendChild(this.element);
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'd' || e.key === 'D') this.element.hidden = !this.element.hidden;
-    });
+  }
+
+  /** Debug mode on/off (toggled by the app, key D). */
+  setVisible(visible: boolean): void {
+    this.element.hidden = !visible;
   }
 
   update(snapshot: GestureSnapshot | null): void {
@@ -27,7 +29,7 @@ export class GestureDebugPanel {
       this.element.textContent = '';
       return;
     }
-    const lines = [`Gesture checks (start >= ${this.threshold})   [D] hide`];
+    const lines = [`Gesture checks (start >= ${this.threshold})   [D] debug off  [F] fill Domain Meter`];
     const speed = `hand speed ${snapshot.handSpeed.toFixed(1)} palms/s`;
     lines.push(snapshot.moving ? `⚠ MOVING (${speed}) - hold still` : `  ${speed}`);
     for (const reason of snapshot.droppedHands) lines.push(`⚠ ignored ${reason}`);

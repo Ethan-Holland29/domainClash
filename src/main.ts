@@ -1,5 +1,13 @@
 import './style.css';
 import { CameraError, CameraManager } from './camera/CameraManager';
+import { createAbilities } from './combat/Ability';
+import { AbilityPresenter } from './presentation/AbilityPresenter';
+import { AudioManager } from './presentation/AudioManager';
+import { DomainSequence } from './presentation/DomainSequence';
+import { voiceLine } from './presentation/VoiceLines';
+import { domainEffectFor } from './domain/DomainEffects';
+import { VfxLayer, type Point } from './presentation/VfxLayer';
+import { CombatManager, type CombatEvent } from './combat/CombatManager';
 import {
   CHARACTERS,
   MOVE_SLOTS,
@@ -25,13 +33,19 @@ import { DomainCinematic, findDomainVideo } from './ui/DomainCinematic';
 import { DomainVideoPanel } from './ui/DomainVideoPanel';
 import { DebugHUD } from './ui/DebugHUD';
 import { FpsCounter } from './ui/FpsCounter';
+import { GameHUD } from './ui/GameHUD';
 import { GestureDebugPanel } from './ui/GestureDebugPanel';
+import { MatchOverlay } from './ui/MatchOverlay';
 import { MoveBanner } from './ui/MoveBanner';
-import { MovePanel } from './ui/MovePanel';
 import { StatusOverlay } from './ui/StatusOverlay';
 
 const MIRRORED = true;
 const CHARACTER_STORAGE_KEY = 'domainclash.characterId';
+const DEBUG_STORAGE_KEY = 'domainclash.debug';
+const TOOLS_STORAGE_KEY = 'domainclash.toolsOpen';
+const SOUND_STORAGE_KEY = 'domainclash.sound';
+const VOICE_STORAGE_KEY = 'domainclash.voice';
+const OPPONENT_NAME = 'Cursed Spirit';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
@@ -40,7 +54,18 @@ app.innerHTML = `
     <video id="webcam" playsinline muted></video>
     <canvas id="overlay"></canvas>
   </div>
+  <div class="game-toolbar">
+    <button type="button" data-action="change-character">Change character (C)</button>
+    <button type="button" data-action="toggle-debug" aria-pressed="false">Debug (D)</button>
+    <button type="button" data-action="toggle-sound" aria-pressed="true">Sound</button>
+    <button type="button" data-action="toggle-voice" aria-pressed="true">Voice</button>
+  </div>
+  <details class="tools">
+    <summary>Training &amp; media tools</summary>
+    <div class="tools-body"></div>
+  </details>
 `;
+const toolsBody = document.querySelector<HTMLDivElement>('.tools-body')!;
 
 const stage = document.querySelector<HTMLDivElement>('#stage')!;
 const camera = new CameraManager(document.querySelector<HTMLVideoElement>('#webcam')!, { mirrored: MIRRORED });
@@ -52,14 +77,25 @@ const fps = new FpsCounter();
 // Starts with no active moves; the character select enables the chosen character's three.
 const gestures = new GestureRecognizer({}, []);
 const gestureDebug = new GestureDebugPanel(stage, gestures.config.enterThreshold);
+// Presentation layer (behind the HUD): effects out of the player's own hands, and audio.
+// Driven only by combat events plus where the hands are.
+const vfx = new VfxLayer(stage);
+const audio = new AudioManager();
+const presenter = new AbilityPresenter(stage, vfx, audio, handAnchor);
+const gameHud = new GameHUD(stage, OPPONENT_NAME, moveTeachStatus);
 const banner = new MoveBanner(stage);
 const characterSelect = new CharacterSelect(stage, CHARACTERS, moveStatus);
-const movePanel = new MovePanel(app, moveStatus);
+const matchOverlay = new MatchOverlay(stage);
+// Abilities are replaced when a character is picked; until then combat is paused.
+const combat = new CombatManager(createAbilities({ primary: '-', secondary: '-', ultimate: '-' }));
 const cinematic = new DomainCinematic();
-// Keeps the video panel between the move panel and the (later-created) dataset panel.
+const domainSequence = new DomainSequence(stage, vfx, audio, cinematic);
+/** True while any full-screen sequence runs: combat pauses and no moves are accepted. */
+const inCinematic = () => cinematic.playing || domainSequence.playing;
+// Keeps the video panel above the (later-created) dataset panel inside the tools section.
 const videoPanelHost = document.createElement('div');
 videoPanelHost.className = 'panel-host';
-app.appendChild(videoPanelHost);
+toolsBody.appendChild(videoPanelHost);
 let videoStore: DomainVideoStore | null = null;
 
 let character: CharacterDefinition | null = null;
@@ -67,29 +103,102 @@ let characterMoveSlots: Record<MoveSlot, GestureDefinition> | null = null;
 let datasetPanel: DatasetPanel | null = null;
 
 gestures.onEvent((event) => hud.logEvent(event));
-// Combat will subscribe here later; for now a fired move is announced.
+// A confirmed hand sign only *attempts* a move: combat decides whether it happens.
 gestures.onAction((action, gesture) => {
   const slot = MOVE_SLOTS.find((s) => characterMoveSlots?.[s].id === gesture.id);
   console.info(`[move] ${character?.name} ${slot ?? '?'} (${action}): ${gesture.name}`);
   if (!character || !slot) return;
-  const title = slot === 'ultimate' ? `Domain Expansion: ${gesture.name}` : gesture.name;
-  banner.show(`${character.name} · ${SLOT_NAME[slot]}`, title.toUpperCase(), character.color);
-  if (slot === 'ultimate') void playDomainVideo(character, gesture);
+  presenter.mark(`gesture ${gesture.name}`);
+  const result = combat.useAbility(slot);
+  showMoveResult(character, slot, gesture, result);
+  if (result.type === 'domain-activated') void runDomainExpansion(character, gesture);
 });
 
-/**
- * Plays the Domain Expansion clip for this domain: the video uploaded in the
- * "Domain Expansion videos" panel, else a bundled file in src/assets/domains/.
- */
-async function playDomainVideo(who: CharacterDefinition, domain: GestureDefinition): Promise<void> {
-  await prepareDomainVideo(); // normally already loaded when the character was picked
-  const url = prepared?.domainId === domain.id ? prepared.url : findDomainVideo(who.id, domain.id);
-  if (!url) {
-    console.info(`No video for ${domain.name}: add one in the "Domain Expansion videos" panel.`);
-    return;
+/** Banner feedback for what a move attempt did. */
+function showMoveResult(who: CharacterDefinition, slot: MoveSlot, move: GestureDefinition, result: CombatEvent): void {
+  const tag = `${who.name} · ${SLOT_NAME[slot]}`;
+  switch (result.type) {
+    case 'cast':
+      // Name shows as the attack starts; the damage number pops at impact (presenter).
+      banner.show(tag, move.name.toUpperCase(), who.color, slot === 'secondary' ? 1200 : 800);
+      break;
+    case 'domain-activated':
+      // The Domain Expansion cinematic shows its own title (DomainSequence).
+      break;
+    case 'on-cooldown':
+      banner.show(`${move.name} · ready in ${(result.remainingMs / 1000).toFixed(1)}s`, 'ON COOLDOWN', '#9e9e9e', 900);
+      break;
+    case 'domain-already-active':
+      banner.show(`${move.name} is already up`, 'DOMAIN ALREADY ACTIVE', '#9e9e9e', 1000);
+      break;
+    case 'domain-not-ready':
+      banner.show(`Domain Meter ${result.meter}% · land attacks to fill it`, 'DOMAIN NOT READY', '#9e9e9e', 1100);
+      break;
   }
-  await runCinematic(url);
-  if (character === who && !characterSelect.isOpen) gestures.requireRelease(domain.id); // holding the sign must not re-fire it
+}
+
+combat.onEvent((event) => presenter.handle(event));
+combat.onEvent((event) => {
+  if (event.type === 'hit' || event.type === 'domain-activated') gameHud.flash('opponent');
+  // Blocks are decided at impact (after the wind-up), so the banner comes from here.
+  if (event.type === 'blocked') banner.show(`${event.ability.name} · ${OPPONENT_NAME} was guarding`, 'BLOCKED', '#9e9e9e');
+  if (event.type === 'opponent-attack') {
+    gameHud.flash('player');
+    banner.show(`${OPPONENT_NAME} hit you · -${event.damage} HP`, 'OUCH', '#ff5252', 900);
+  }
+  if (event.type === 'match-over') {
+    const detail =
+      event.result === 'won'
+        ? `${character?.name ?? 'You'} exorcised the ${OPPONENT_NAME}.`
+        : `The ${OPPONENT_NAME} beat ${character?.name ?? 'you'}.`;
+    matchOverlay.show(event.result, detail);
+  }
+});
+
+matchOverlay.onRestart = restartMatch;
+
+function restartMatch(): void {
+  matchOverlay.hide();
+  if (!character || !characterMoveSlots) return;
+  combat.reset(
+    createAbilities({
+    primary: characterMoveSlots.primary.name,
+    secondary: characterMoveSlots.secondary.name,
+      ultimate: characterMoveSlots.ultimate.name,
+    }),
+    domainEffectFor(character.id),
+  );
+  const who = character;
+  const moves = characterMoveSlots;
+  presenter.setContext({
+    characterId: who.id,
+    color: who.color,
+    slotOf: (name) => MOVE_SLOTS.find((s) => moves[s].name === name) ?? null,
+  });
+  activateMoves();
+}
+
+/**
+ * The Domain Expansion cinematic (intro -> the player's video or a built-in
+ * name reveal -> environment transition), with all moves and combat paused.
+ * Gameplay then resumes inside the Domain state that combat already opened.
+ */
+async function runDomainExpansion(who: CharacterDefinition, domain: GestureDefinition): Promise<void> {
+  await prepareDomainVideo(); // normally already loaded when the character was picked
+  const videoUrl = prepared?.domainId === domain.id ? prepared.url : findDomainVideo(who.id, domain.id);
+  gestures.setDefinitions([]); // nothing can fire during the cinematic
+  await domainSequence.play({
+    domainName: domain.name,
+    characterId: who.id,
+    color: who.color,
+    videoUrl,
+    handAnchor,
+    speak: () => audio.speak(`${who.id}-ultimate`, voiceLine(who.id, 'ultimate', `Domain Expansion. ${domain.name}.`)),
+  });
+  if (character === who && !characterSelect.isOpen) {
+    activateMoves();
+    gestures.requireRelease(domain.id); // still holding the sign must not re-fire it
+  }
 }
 
 /** The current character's domain clip, loaded ahead of time. */
@@ -115,10 +224,10 @@ async function prepareDomainVideo(force = false): Promise<void> {
 
 /** Plays a clip full-window with all moves paused, then restores the current character's moves. */
 async function runCinematic(url: string): Promise<void> {
-  if (cinematic.playing) return;
+  if (inCinematic()) return;
   gestures.setDefinitions([]); // nothing can fire during the cinematic
   await cinematic.play(url);
-  if (character && !characterSelect.isOpen) selectCharacter(character);
+  if (character && !characterSelect.isOpen) activateMoves();
 }
 
 async function initDomainVideos(): Promise<void> {
@@ -145,7 +254,81 @@ async function initDomainVideos(): Promise<void> {
   }
 }
 
-/** Short learned/rule status of a move, for the select screen and move panel. */
+/** Whether a move is usable yet, and what to record if not (for the ability cards). */
+function moveTeachStatus(gesture: GestureDefinition): { learned: boolean; hint: string } {
+  const n = LEARNED_MODEL.countFor(gesture.datasetLabel);
+  const need = SIGN_TUNING.learned.minSamples;
+  const learned = n >= need || !gesture.taughtOnly;
+  return { learned, hint: learned ? '' : `Teach: record ${gesture.datasetLabel} (${n}/${need})` };
+}
+
+// ---------- debug mode & tools (kept separate from the game HUD) ----------
+
+let debugOn = false;
+
+/** Shows/hides the debug layer: tracking stats, gesture checks and the event log. */
+function setDebug(on: boolean): void {
+  debugOn = on;
+  document.body.classList.toggle('debug-on', on);
+  gestureDebug.setVisible(on);
+  document.querySelector('[data-action="toggle-debug"]')!.setAttribute('aria-pressed', String(on));
+  try {
+    localStorage.setItem(DEBUG_STORAGE_KEY, on ? '1' : '0');
+  } catch {
+    // not remembered
+  }
+}
+
+window.addEventListener('keydown', (e) => {
+  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
+  if (e.key === 'd' || e.key === 'D') setDebug(!debugOn);
+  // Debug-only cheat: fill the Domain Meter to try a Domain Expansion (and its video) quickly.
+  if ((e.key === 'f' || e.key === 'F') && debugOn && character) {
+    combat.debugFillMeter();
+    banner.show('Debug', 'DOMAIN METER FILLED', '#ffd740', 900);
+  }
+});
+
+const tools = document.querySelector<HTMLDetailsElement>('details.tools')!;
+tools.addEventListener('toggle', () => {
+  try {
+    localStorage.setItem(TOOLS_STORAGE_KEY, tools.open ? '1' : '0');
+  } catch {
+    // not remembered
+  }
+});
+
+function readFlag(key: string, fallback: boolean): boolean {
+  try {
+    const v = localStorage.getItem(key);
+    return v === null ? fallback : v === '1';
+  } catch {
+    return fallback;
+  }
+}
+
+setDebug(readFlag(DEBUG_STORAGE_KEY, false));
+
+/** Sound / Voice toggles (toolbar), remembered between visits. */
+function bindToggle(action: string, key: string, apply: (on: boolean) => void): void {
+  const button = document.querySelector<HTMLButtonElement>(`[data-action="${action}"]`)!;
+  const set = (on: boolean) => {
+    apply(on);
+    button.setAttribute('aria-pressed', String(on));
+    try {
+      localStorage.setItem(key, on ? '1' : '0');
+    } catch {
+      // not remembered
+    }
+  };
+  button.addEventListener('click', () => set(button.getAttribute('aria-pressed') !== 'true'));
+  set(readFlag(key, true));
+}
+bindToggle('toggle-sound', SOUND_STORAGE_KEY, (on) => audio.setMuted(!on));
+bindToggle('toggle-voice', VOICE_STORAGE_KEY, (on) => audio.setVoiceEnabled(on));
+tools.open = readFlag(TOOLS_STORAGE_KEY, true);
+
+/** Short learned/rule status of a move, for the character select screen. */
 function moveStatus(gesture: GestureDefinition): string {
   const n = LEARNED_MODEL.countFor(gesture.datasetLabel);
   const need = SIGN_TUNING.learned.minSamples;
@@ -154,11 +337,17 @@ function moveStatus(gesture: GestureDefinition): string {
   return `built-in sign (${n}/${need} recorded)`;
 }
 
+/** Enables the current character's three moves (e.g. after a cinematic). */
+function activateMoves(): void {
+  if (characterMoveSlots) gestures.setDefinitions(MOVE_SLOTS.map((slot) => characterMoveSlots![slot]));
+}
+
+/** Picks a character and starts a new match with their moves. */
 function selectCharacter(next: CharacterDefinition): void {
   character = next;
   characterMoveSlots = characterMoves(next);
-  gestures.setDefinitions(MOVE_SLOTS.map((slot) => characterMoveSlots![slot]));
-  movePanel.setCharacter(next, characterMoveSlots);
+  restartMatch();
+  gameHud.setCharacter(next, characterMoveSlots);
   datasetPanel?.setLabelGroups(labelGroups());
   void prepareDomainVideo();
   try {
@@ -186,14 +375,38 @@ function labelGroups(): LabelGroup[] {
 }
 
 characterSelect.onSelect = selectCharacter;
-movePanel.onChangeCharacter = openCharacterSelect;
+document.querySelector('[data-action="change-character"]')!.addEventListener('click', () => {
+  if (!inCinematic()) openCharacterSelect();
+});
+document.querySelector('[data-action="toggle-debug"]')!.addEventListener('click', () => setDebug(!debugOn));
 window.addEventListener('keydown', (e) => {
   if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
-  if ((e.key === 'c' || e.key === 'C') && !characterSelect.isOpen && !cinematic.playing) openCharacterSelect();
+  if ((e.key === 'c' || e.key === 'C') && !characterSelect.isOpen && !inCinematic()) openCharacterSelect();
 });
 
 let lastVideoTime = -1;
 let lastFrame: HandFrame | null = null;
+
+/**
+ * Where the player's hand(s) are on screen, as stage fractions (landmarks are
+ * already in mirrored display space, and the stage has the video's aspect).
+ * The middle of each hand (palm + fingertips), averaged over both hands.
+ */
+function handAnchor(): Point | null {
+  const hands = camera.isRunning ? lastFrame?.hands : null;
+  if (!hands?.length) return null;
+  let x = 0;
+  let y = 0;
+  let n = 0;
+  for (const h of hands) {
+    for (const i of [0, 5, 9, 13, 17, 8, 12]) {
+      x += h.landmarks[i].x;
+      y += h.landmarks[i].y;
+      n++;
+    }
+  }
+  return { x: x / n, y: y / n };
+}
 
 function loop(): void {
   const video = camera.video;
@@ -210,9 +423,17 @@ function loop(): void {
   }
   const running = camera.isRunning;
   const snapshot = running ? gestures.snapshot() : null;
-  hud.update({ status: statusText(), fps: fps.fps, frame: running ? lastFrame : null, gesture: snapshot });
-  gestureDebug.update(snapshot);
-  movePanel.update(snapshot);
+  if (debugOn) {
+    hud.update({ status: statusText(), fps: fps.fps, frame: running ? lastFrame : null, gesture: snapshot });
+    gestureDebug.update(snapshot);
+  }
+
+  // Combat time only runs while actually fighting (not choosing a character or watching a domain).
+  combat.setPaused(!character || characterSelect.isOpen || inCinematic() || !camera.isRunning);
+  combat.update(performance.now());
+  const fight = combat.snapshot();
+  gameHud.update(fight, inCinematic() ? null : snapshot); // no "make a sign" prompt mid-cinematic
+  presenter.tick(fight, snapshot?.phase === 'candidate');
   requestAnimationFrame(loop);
 }
 
@@ -274,7 +495,7 @@ async function initDataset(): Promise<void> {
       () => (camera.isRunning ? lastFrame : null),
       (sample) => manager.add(sample),
     );
-    const panel = new DatasetPanel(app, manager, recorder, labelGroups());
+    const panel = new DatasetPanel(toolsBody, manager, recorder, labelGroups());
     datasetPanel = panel;
     await panel.refreshCounts();
 
@@ -284,7 +505,7 @@ async function initDataset(): Promise<void> {
     let retrain: ReturnType<typeof setTimeout> | undefined;
     const train = async () => {
       LEARNED_MODEL.train(await manager.all());
-      movePanel.refreshStatus();
+      gameHud.refreshTeachHints();
     };
     manager.onChange(() => {
       clearTimeout(retrain);
