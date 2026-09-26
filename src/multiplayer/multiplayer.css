@@ -1,0 +1,50 @@
+.sign-guide{max-height:95px;overflow:auto;scrollbar-width:thin;color:#b5cde6;}
+.sign-guide p{font:500 clamp(10px,.8vw,12px)/1.4 system-ui,sans-serif!important;margin:4px 0!important;}
+.move-sign-hint{display:block;color:#a5c3de;font-size:.65rem;line-height:1.4;margin-top:4px;font-weight:400;}
+#open-multiplayer{font-family:'JJK',sans-serif;border-radius:2px;border-color:#79b6ec;background:linear-gradient(120deg,#1d4a78,#091b31);padding:12px 20px;white-space:nowrap;}
+#app[data-multiplayer="true"] .topbar{flex-wrap:wrap;}
+#app[data-multiplayer="true"][data-seat="0"] .camera-column .stage::after{content:'P1 / HAND SIGN INPUT';}
+#app[data-multiplayer="true"][data-seat="1"] .camera-column .stage::after{content:'P2 / HAND SIGN INPUT';}
+#app[data-multiplayer="true"] .remote-camera-column .stage::after{content:'OPPONENT / LIVE VIDEO';}
+.multiplayer-dialog{color:#d8eeff;background:linear-gradient(125deg,#102b48,#040a15);border:1px solid #568fc4;border-top:4px solid #8bcfff;padding:28px;width:min(440px,90vw);box-shadow:0 18px 80px #000b;}
+.multiplayer-dialog::backdrop{background:#01050dd9;backdrop-filter:blur(5px);}
+.multiplayer-dialog h2{font-family:'JJK',sans-serif;letter-spacing:.06em;}
+.multiplayer-dialog button,.multiplayer-dialog input{width:100%;margin:8px 0;padding:12px;border:1px solid #456a93;background:#0b213b;color:#e0f1ff;}
+.multiplayer-dialog input{text-transform:uppercase;letter-spacing:.15em;box-sizing:border-box;}
+#multiplayer-selection{position:relative;isolation:isolate;min-height:90dvh;padding:20px;background:#020813;color:#d8eeff;overflow:hidden;}
+#multiplayer-selection>.selection-scenery{background:linear-gradient(110deg,#071429eb,#020813aa),url('/art/backgrounds/gojo.webp') center/cover;opacity:.5;}
+#multiplayer-selection .select-heading{position:relative;display:flex;align-items:center;gap:20px;padding:5px 8px 18px;border-bottom:1px solid #406588;}
+.mp-room{margin-left:auto;letter-spacing:.1em;color:#93d6ff;font-size:.85rem;}
+.mp-select-layout{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,.75fr) minmax(0,1fr);gap:24px;align-items:start;}
+.mp-roster{padding-top:32px;align-self:center;}
+.mp-roster .portrait-grid{width:100%;grid-template-columns:repeat(3,minmax(0,1fr));}
+.mp-hero{position:relative;min-height:580px;padding-top:16px;}
+.mp-hero-art{display:block;width:100%;height:270px;object-fit:contain;filter:drop-shadow(0 10px 22px #000);}
+.mp-hero-copy{position:relative;}
+.mp-hero h2{font:italic 800 clamp(20px,2vw,32px) system-ui;margin:12px 0;color:var(--fighter-color);}
+.mp-hero h3{font-size:1rem;margin:6px 0;}
+.mp-hero .technique-banner{padding:9px 14px;margin-top:7px;}
+.mp-hero .technique-banner p{font-size:.85rem;margin:5px 0;}
+.mp-hero .technique-banner small{font-size:.67rem;line-height:1.4;display:block;color:#b4cce5;}
+.mp-hero[data-seat="1"] .player-badge{background:#813044;}
+.mp-confirm,.mp-bot{width:100%;padding:14px;border:1px solid #79b6ec;background:linear-gradient(120deg,#1d4a78,#091b31);color:#e0f1ff;text-transform:uppercase;font-weight:800;}
+.mp-bot{width:auto;}.mp-selection-status{font-size:.75rem;color:#a9cee9;min-height:3em;}
+#multiplayer-selection .selection-footer{position:relative;display:flex;justify-content:space-between;align-items:center;padding:20px 0;}
+#app[data-multiplayer="true"][data-mode="combat"] .workspace{grid-template-columns:minmax(0,1fr) minmax(320px,.85fr) minmax(0,1fr);align-items:start;}
+#app[data-multiplayer="true"] .camera-column{grid-column:1;grid-row:1;}
+#app[data-multiplayer="true"] .controls{grid-column:2;grid-row:1;}
+#app[data-multiplayer="true"] .remote-camera-column{grid-column:3;grid-row:1;}
+#app[data-multiplayer="true"][data-seat="1"] .camera-column{grid-column:3;}
+#app[data-multiplayer="true"][data-seat="1"] .remote-camera-column{grid-column:1;}
+.remote-camera-column .stage{aspect-ratio:4/3;position:relative;}
+.remote-camera-column video,.remote-camera-column canvas{width:100%;height:100%;object-fit:contain;transform:none!important;}
+.remote-camera-column canvas{position:absolute;inset:0;}
+.remote-camera-label{position:absolute;bottom:8px;left:10px;padding:6px;background:#071528d9;color:#a7d5ff;font-size:.62rem;}
+#app[data-multiplayer="true"] .opponent-picker,#app[data-multiplayer="true"] #fight-start,#app[data-multiplayer="true"] #fight-reset{display:none;}
+#app[data-multiplayer="true"] .panel-area{max-height:calc(100dvh - 110px);overflow:auto;}
+#app[data-multiplayer="true"] .topbar>label:has(#character){display:none;}
+#app[data-multiplayer="true"] #fight-stats{grid-template-columns:1fr;}
+#app[data-multiplayer="true"] .duel-fighter img{height:68px;}
+.remote-camera-column[hidden],#multiplayer-selection[hidden]{display:none!important;}
+@media(max-width:950px){.mp-select-layout{gap:10px;grid-template-columns:1fr 220px 1fr;}.mp-hero-art{height:200px;}#app[data-multiplayer="true"][data-mode="combat"] .workspace{grid-template-columns:1fr 290px 1fr;}.mp-hero .technique-banner{padding:8px;}}
+@media(max-width:700px){.mp-select-layout{grid-template-columns:1fr 1fr;}.mp-roster{grid-column:1/-1;grid-row:1;width:min(300px,100%);justify-self:center;padding-top:10px;}.mp-hero{min-height:0;}.mp-hero-art{height:180px;}#multiplayer-selection .select-heading{flex-wrap:wrap;}.mp-room{margin-left:0;}#app[data-multiplayer="true"][data-mode="combat"] .workspace{grid-template-columns:1fr 1fr;}#app[data-multiplayer="true"] .camera-column,#app[data-multiplayer="true"][data-seat="1"] .remote-camera-column{grid-column:1;grid-row:1;}#app[data-multiplayer="true"] .remote-camera-column,#app[data-multiplayer="true"][data-seat="1"] .camera-column{grid-column:2;grid-row:1;}#app[data-multiplayer="true"] .controls{grid-column:1/-1;grid-row:2;}#app[data-multiplayer="true"] .panel-area{max-height:none;}}

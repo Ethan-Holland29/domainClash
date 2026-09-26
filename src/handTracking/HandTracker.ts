@@ -51,6 +51,7 @@ export class HandTracker {
       const top = handednessCandidates[0];
 
       return {
+        worldLandmarks: raw.worldLandmarks[i]?.map(lm => ({x:lm.x,y:lm.y,z:lm.z})) ?? [],
         landmarks: landmarks.map((lm) => ({ x: lm.x, y: lm.y, z: lm.z })),
         handedness: (top?.categoryName as Handedness) ?? "Right",
         handednessScore: top?.score ?? 0,

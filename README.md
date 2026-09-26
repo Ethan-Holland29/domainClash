@@ -1,5 +1,7 @@
 # DomainClash
 
+This branch integrates the progress UI with private multiplayer and built-in signs from the other branches. See [INTEGRATION.md](INTEGRATION.md) for setup, gesture precedence, testing and Cloudflare hosting.
+
 Webcam hand tracking and gesture recognition prototype with guided personal sign recording. The Combat tab includes a turn-based duel with character-specific passives and effects.
 
 ## Run
@@ -12,7 +14,7 @@ Allow the camera, select a move, and choose **Record this sign**. You have five 
 
 References contain numerical landmarks, not pictures or video. They are saved in this browser for this exact site address (including its port). Export a JSON backup before switching browsers, addresses, or clearing browser data. Import merges a backup, replacing matching moves.
 
-Recognition uses only saved references assigned to the selected character. Unsaved moves stay disabled. Similar-looking signs within the selected character are rejected or left unrecognized to reduce accidental activations. Recording and review temporarily suppress gesture events.
+Recognition uses saved references assigned to the selected character when available, then built-in signs for unsaved moves. Gesture focus distinguishes overlapping built-in poses such as Punch and Blue. Recording and review temporarily suppress combat gesture events.
 
 ## Limitations
 

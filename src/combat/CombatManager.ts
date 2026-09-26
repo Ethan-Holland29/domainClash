@@ -79,7 +79,9 @@ export class CombatManager {
   message = 'Start a match when ready.';
   log: string[] = [];
   private random: () => number;
-  constructor(character: CharacterDefinition, random: () => number = Math.random) {
+  opponentMode: 'bot' | 'human';
+  constructor(character: CharacterDefinition, random: () => number = Math.random, opponentMode: 'bot' | 'human' = 'bot') {
+    this.opponentMode = opponentMode;
     this.random = random;
     this.player = makeFighter(character); this.opponent = makeFighter(character);
   }
@@ -218,6 +220,12 @@ export class CombatManager {
     if (this.status !== 'playing' || this.turn !== 'player') return false;
     this.passiveBatch++;
     return this.act('player', action);
+  }
+  attackFrom(seat: number, action: CombatAction): boolean {
+    const side = seat === 0 ? 'player' : 'enemy';
+    if (this.opponentMode !== 'human' || this.status !== 'playing' || this.turn !== side) return false;
+    this.passiveBatch++;
+    return this.act(side, action);
   }
   private act(side: Side, action: CombatAction): boolean {
     const f = this.fighter(side); const enemy = this.fighter(this.other(side));
@@ -363,6 +371,6 @@ export class CombatManager {
     } else if (f.recovery > 0) {
       f.recovery--; this.note(`${f.character.name} skips a turn to recover (${f.recovery} remaining).`);
       this.endTurn(this.turn);
-    } else if (this.turn === 'enemy') this.act('enemy', this.chooseEnemyAction());
+    } else if (this.turn === 'enemy' && this.opponentMode === 'bot') this.act('enemy', this.chooseEnemyAction());
   }
 }

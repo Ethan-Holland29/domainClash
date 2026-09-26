@@ -5,8 +5,10 @@ import { CHARACTERS } from '../characters/Characters';
 import { GESTURE_LABELS } from '../handTracking/GestureTypes';
 import type { GestureType } from '../handTracking/GestureTypes';
 import { MOVE_DETAILS, PASSIVES } from './CombatRules';
+import {signHint} from '../integration/Signs';
 
 export class CombatPanel {
+  networkSend: ((action:CombatAction)=>void)|null=null;
   private seenTechnique = -1;
   private seenPassive = -1;
   private manager: CombatManager;
@@ -123,7 +125,7 @@ export class CombatPanel {
       this.buttonsKey = key;
       this.container.querySelector('#fight-buttons')!.replaceChildren(...actions.map(action => {
         const b = document.createElement('button'); b.dataset.action = action;
-        b.onclick = () => { if (action === 'HOLLOW_PURPLE' || m.player.borrowedSummons.has(action as GestureType)) m.attack(action); else this.send(action); this.render(); };
+        b.onclick = () => { if(this.networkSend){this.networkSend(action);return;} if (action === 'HOLLOW_PURPLE' || m.player.borrowedSummons.has(action as GestureType)) m.attack(action); else this.send(action); this.render(); };
         return b;
       }));
       this.container.querySelector('#fight-move-details')!.replaceChildren(...actions.map(action => {
@@ -136,7 +138,8 @@ export class CombatPanel {
       const action = b.dataset.action as CombatAction; const reason = m.unavailable(action);
       const name = m.player.mahoraga ? 'Mahoraga: Strike (30 damage)' : action === 'HOLLOW_PURPLE' ? 'Hollow Purple' : GESTURE_LABELS[action];
       b.disabled = m.status !== 'playing' || m.turn !== 'player' || !!reason;
-      b.textContent = `${name}${reason ? ` — ${reason}` : ''}`; b.title = this.moveDetails(action);
+      const label=`${name}${reason ? ` — ${reason}` : ''}`;
+      if(b.dataset.label!==label){b.dataset.label=label;b.replaceChildren();const strong=document.createElement('span');strong.textContent=label;const hint=document.createElement('small');hint.className='move-sign-hint';hint.textContent=signHint(action);b.append(strong,hint);} b.title = this.moveDetails(action);
     }
     const logKey = JSON.stringify(m.log);
     if (logKey !== this.logKey) {

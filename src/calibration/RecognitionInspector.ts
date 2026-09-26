@@ -1,6 +1,7 @@
 import { GESTURE_LABELS, type GestureType } from '../handTracking/GestureTypes';
 import type { TrackedHand } from '../handTracking/HandTypes';
 import type { PoseLibrary } from './PoseLibrary';
+import {signHint} from '../integration/Signs';
 
 export class RecognitionInspector {
   private select: HTMLSelectElement;
@@ -28,11 +29,12 @@ export class RecognitionInspector {
     const target = this.select.value as GestureType;
     const expectedCounts = [...new Set((this.library.data[target] ?? []).map(p=>p.length))];
     const evaluations = this.library.evaluate(hands, aspect, moves);
-    const targetResult = evaluations.find(e=>e.gesture===target)!;
-    const nearest = evaluations.find(e=>e.debug.error !== null);
+    const targetResult = evaluations.find(e=>e.gesture===target);
+    if(!targetResult){this.status.textContent='Waiting for valid hand landmarks.';return;}
+    const nearest = evaluations.find(e=>e.matched);
     const error = targetResult.debug.error;
     let reason = 'Pose matches. Hold steady for confirmation.';
-    if (!expectedCounts.length) reason = 'No recording saved for this sign. Import your backup or record it.';
+    if (!expectedCounts.length) reason = targetResult.matched ? 'Built-in sign matches. Hold steady.' : `Built-in sign: ${signHint(target)}`;
     else if (!expectedCounts.includes(hands.length)) reason = `Tracking sees ${hands.length} hand(s); this sign needs ${expectedCounts.join(' or ')}. Keep both palms visible if using two hands.`;
     else if (error === null) reason = 'Palm tracking is too small or invalid. Move closer to the camera.';
     else if (targetResult.debug.checks.stableBestCandidate) reason = 'Strongest match: hold for one second for the more tolerant confirmation.';

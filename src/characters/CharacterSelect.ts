@@ -2,6 +2,7 @@ import { PORTRAITS } from './Portraits';
 import { PASSIVE_CUES } from '../combat/CombatRules';
 import { CHARACTERS } from './Characters';
 import { GESTURE_LABELS } from '../handTracking/GestureTypes';
+import {signHint} from '../integration/Signs';
 
 const CHARACTER_TITLES: Record<string, string> = {
  gojo: 'Special Grade Sorcerer', yuta: 'Special Grade Sorcerer', geto: 'Special Grade Sorcerer',
@@ -29,6 +30,12 @@ export class CharacterSelect {
       container.querySelector('#preview-abilities')!.textContent = preview.plannedKit ? preview.plannedKit.technique ?? 'None' : preview.abilities.filter(g => g !== 'BASIC_PUNCH').map(g => GESTURE_LABELS[g]).join(' / ') || 'None';
       container.querySelector('#preview-ultimate')!.textContent = preview.plannedKit ? preview.plannedKit.ultimate ?? 'None' : preview.ultimate?.name ?? 'None';
       container.querySelector('#ultimate-label')!.textContent = 'ULTIMATE';
+      container.querySelectorAll('.sign-guide').forEach(el=>el.remove());
+      for(const [selector,moves] of [['#preview-abilities',preview.abilities],['#preview-ultimate',preview.ultimate?[preview.ultimate.gesture]:[]]] as const){
+        const guide=document.createElement('div');guide.className='sign-guide';
+        for(const move of moves){const line=document.createElement('p');line.textContent=`${GESTURE_LABELS[move]}: ${signHint(move)}`;guide.append(line);}
+        container.querySelector(selector)!.after(guide);
+      }
       container.querySelectorAll<HTMLButtonElement>('.portrait-card').forEach((b, i) => b.setAttribute('aria-pressed', String(index === i)));
       // Restart only when the character changes; rapid hovering cancels the old entrance.
       hero.classList.remove('character-enter');

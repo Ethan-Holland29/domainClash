@@ -13,6 +13,7 @@ export interface Landmark {
 export type Handedness = "Left" | "Right";
 
 export interface TrackedHand {
+  worldLandmarks?: Landmark[];
   landmarks: Landmark[]; // 21 landmarks, MediaPipe hand landmark order
   handedness: Handedness;
   handednessScore: number; // 0-1 confidence in left/right classification

@@ -1,4 +1,5 @@
 import type { TrackedHand } from '../handTracking/HandTypes';
+import {fallbackSigns} from '../integration/Signs';
 import { ALL_GESTURES, type GestureType, type GestureEvaluation } from '../handTracking/GestureTypes';
 
 export type Pose = number[][];
@@ -92,7 +93,7 @@ export class PoseLibrary {
   evaluate(hands: TrackedHand[], aspect: number, allowed: GestureType[] = ALL_GESTURES): GestureEvaluation[] {
     const pose = describe(hands, aspect);
     const ranked = allowed.map(gesture => ({ gesture, error: pose ? Math.min(...(this.data[gesture] ?? []).map(p => distance(pose, p))) : Infinity })).sort((a, b) => a.error - b.error);
-    return ranked.map((r, i) => {
+    const learned = ranked.map((r, i) => {
       const limit = MATCH_LIMITS[r.gesture] ?? MATCH_LIMIT;
       const maximum = r.gesture === 'AMPLIFICATION_BLUE' ? limit : limit * 1.5;
       const gap = (ranked[1]?.error ?? Infinity) - r.error;
@@ -113,5 +114,7 @@ export class PoseLibrary {
         },
       };
     });
+    const fallback = fallbackSigns(hands,aspect,allowed.filter(g=>!this.data[g]?.length));
+    return [...learned.filter(r=>!!this.data[r.gesture]?.length),...fallback];
   }
 }

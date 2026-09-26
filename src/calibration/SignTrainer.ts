@@ -25,7 +25,7 @@ export class SignTrainer {
     container.innerHTML = `<h1>Teach DomainClash your signs</h1><p>Choose a move and demonstrate the sign you want it to use. Keep the same hand count and hold still. You get 5 seconds to prepare, then 2 seconds of capture.</p>
     <label>Move <select id="move">${ALL_GESTURES.map(g => `<option value="${g}">${GESTURE_LABELS[g]}</option>`).join('')}</select></label>
     <div class="actions"><button id="record" disabled>Record this sign</button><button id="add-example" disabled>Save as another example</button><button id="save" disabled>Replace examples & next</button><button id="cancel">Cancel / discard</button><button id="export">Export backup</button><label class="import">Import backup <input id="import" type="file" accept="application/json"></label></div>
-    <p id="training-status" role="status"></p><p>Saved signs stay in this browser. Only hand landmark numbers are stored, never webcam video. Export a backup to keep a file. Recognition uses saved signs only once you save your first sign; unsaved moves then stay disabled.</p>`;
+    <p id="training-status" role="status"></p><p>Saved signs stay in this browser. Only hand landmark numbers are stored, never webcam video. Export a backup to keep a file. A saved sign replaces that move’s built-in sign; other moves keep their built-in signs.</p>`;
     this.select = container.querySelector('#move')!;
     this.status = container.querySelector('#training-status')!;
     this.button = container.querySelector('#record')!;

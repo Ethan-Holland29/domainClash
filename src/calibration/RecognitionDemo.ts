@@ -4,6 +4,7 @@ import { ALL_GESTURES, GESTURE_LABELS, type GestureType, type GestureRecognition
 import { GestureRecognizer } from '../handTracking/GestureRecognizer';
 import type { TrackedHand } from '../handTracking/HandTypes';
 import type { PoseLibrary } from './PoseLibrary';
+import {signHint} from '../integration/Signs';
 
 interface Trial { gesture: GestureType; character: string; result: 'pending' | 'missing' | 'passed' | 'skipped'; wrong: string[]; attempts: number; }
 export class RecognitionDemo {
@@ -25,7 +26,7 @@ export class RecognitionDemo {
   get active(): boolean { return this.phase !== 'idle' && this.phase !== 'finished'; }
   constructor(container: HTMLElement, library: PoseLibrary, setLocked: (locked: boolean) => void) {
     this.setLocked = setLocked;
-    container.innerHTML = `<h2>Test every sign</h2><p>Each saved sign is tested against its character’s full move set. Lower your hands between trials, then hold the prompted sign. Basic Punch is tested once. This does not change your recordings.</p><div class="actions"><button id="demo-start" disabled>Start sign demo</button><button id="demo-next" disabled>Skip sign</button><button id="demo-retry" disabled>Retry sign</button><button id="demo-stop">Stop demo</button><button id="demo-export">Export test report</button></div><p id="demo-status" role="status">Waiting for camera. Missing recordings will be listed separately.</p><ul id="demo-results"></ul>`;
+    container.innerHTML = `<h2>Test every sign</h2><p>Test saved and built-in signs. Blue and Straight Hands use Gesture focus because their fists overlap Punch. Lower your hands between trials, then hold the prompted sign. This does not change your recordings.</p><div class="actions"><button id="demo-start" disabled>Start sign demo</button><button id="demo-next" disabled>Skip sign</button><button id="demo-retry" disabled>Retry sign</button><button id="demo-stop">Stop demo</button><button id="demo-export">Export test report</button></div><p id="demo-status" role="status">Waiting for camera.</p><ul id="demo-results"></ul>`;
     this.status = container.querySelector('#demo-status')!;
     this.results = container.querySelector('#demo-results')!;
     this.start = container.querySelector('#demo-start')!;
@@ -33,11 +34,13 @@ export class RecognitionDemo {
     this.retry = container.querySelector('#demo-retry')!;
     this.recognizer = new GestureRecognizer(hands => {
       const character = CHARACTERS.find(c => c.id === this.trials[this.index]?.character);
-      return library.evaluate(hands, this.aspect, character ? characterGestures(character) : []);
+      const target=this.trials[this.index]?.gesture;
+      const focused=target&&['AMPLIFICATION_BLUE','YUJI_ULTIMATE'].includes(target)&&!library.data[target]?.length;
+      return library.evaluate(hands, this.aspect, focused?[target]:character ? characterGestures(character) : []);
     });
     this.start.onclick = () => {
       this.startedAt = new Date().toISOString();
-      this.trials = ALL_GESTURES.map(gesture => ({ gesture, character: CHARACTERS.find(c => characterGestures(c).includes(gesture))!.id, result: library.data[gesture] ? 'pending' : 'missing', wrong: [], attempts: 0 }));
+      this.trials = ALL_GESTURES.map(gesture => ({ gesture, character: CHARACTERS.find(c => characterGestures(c).includes(gesture))!.id, result: 'pending', wrong: [], attempts: 0 }));
       this.index = -1; this.setLocked(true); this.start.disabled = true; this.advance();
     };
     this.next.onclick = () => { const trial = this.trials[this.index]; if (trial.result !== 'passed') trial.result = 'skipped'; this.advance(); };
@@ -87,7 +90,7 @@ export class RecognitionDemo {
       return this.recognizer.update([], now);
     }
     if (this.phase === 'prepare') {
-      this.status.textContent = `${character.name} — ${label}. Get ready: ${Math.max(1, Math.ceil((3000 - (now - this.since)) / 1000))}…`;
+      this.status.textContent = `${character.name} — ${label}. ${signHint(trial.gesture)} Get ready: ${Math.max(1, Math.ceil((3000 - (now - this.since)) / 1000))}…`;
       if (now - this.since >= 3000) { this.phase = 'show'; this.since = now; }
       return this.recognizer.update([], now);
     }
