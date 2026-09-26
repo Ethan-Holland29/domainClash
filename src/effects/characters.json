@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "blackFlash": {"color":"#080208","accent":"#FFFFFF","ambient":"#000000","shape":"fracture","duration":500,"tier":"medium","particleStyle":"streaks","aura":false,"notes":[55,110,42],"wave":"sawtooth","noise":0.75},
+  "budgets": {"low": 24, "medium": 56, "high": 96, "perPlayer": 96, "global": 160},
+  "characters": [
+    {"id":"gojo","displayName":"Satoru Gojo","aura":"#1E5FFF","accent":"#DDFBFF","moves":["BASIC_PUNCH","REVERSAL_RED","AMPLIFICATION_BLUE","HOLLOW_PURPLE","GOJO_ULTIMATE"]},
+    {"id":"megumi","displayName":"Megumi Fushiguro","aura":"#2E1065","accent":"#C1BFE8","moves":["BASIC_PUNCH","DIVINE_DOGS","NUE","MAHORAGA","MEGUMI_ULTIMATE"]},
+    {"id":"sukuna","displayName":"Ryomen Sukuna","aura":"#DB2944","accent":"#FFF1F1","moves":["BASIC_PUNCH","CLEAVE","SUKUNA_ULTIMATE"]},
+    {"id":"choso","displayName":"Choso","aura":"#A80022","accent":"#FF656E","moves":["BASIC_PUNCH","PIERCING_BLOOD","CHOSO_ULTIMATE"]},
+    {"id":"ryu","displayName":"Ryu Ishigori","aura":"#71DED9","accent":"#EEFFFD","moves":["BASIC_PUNCH","GRANITE_BLAST","RYU_ULTIMATE"]},
+    {"id":"yuji","displayName":"Yuji Itadori","aura":"#16BFE0","accent":"#E0FCFF","moves":["BASIC_PUNCH","YUJI_ULTIMATE"]},
+    {"id":"toji","displayName":"Toji Fushiguro","aura":null,"accent":"#E3E9EE","moves":["BASIC_PUNCH","CURSED_TOOLS"]},
+    {"id":"geto","displayName":"Suguru Geto","aura":"#684588","accent":"#D2B9E8","moves":["BASIC_PUNCH","CURSE_SWALLOW","GETO_ULTIMATE"]},
+    {"id":"yuta","displayName":"Yuta Okkotsu","aura":"#CF73E6","accent":"#FAEBFF","moves":["BASIC_PUNCH","RIKA","YUTA_ULTIMATE"]}
+  ],
+  "moves": [
+    {"gestureId":"BASIC_PUNCH","name":"Basic Punch","colorPrimary":"#16BFE0","colorSecondary":"#E0FCFF","ambient":"#063C49","particleStyle":"embers","motionStyle":"impact","duration_ms":380,"vfxTier":"low","notes":[150,65],"wave":"triangle","noise":0.35},
+    {"gestureId":"CLEAVE","name":"Cleave","colorPrimary":"#EDC9D1","colorSecondary":"#FFFFFF","ambient":"#0A0A0A","particleStyle":"streaks","motionStyle":"slashes","duration_ms":440,"vfxTier":"medium","notes":[1200,450,110],"wave":"sawtooth","noise":0.6},
+    {"gestureId":"PIERCING_BLOOD","name":"Piercing Blood","colorPrimary":"#A80022","colorSecondary":"#FF7B83","ambient":"#260007","particleStyle":"droplets","motionStyle":"blood","duration_ms":520,"vfxTier":"medium","notes":[180,880,330],"wave":"sawtooth","noise":0.35},
+    {"gestureId":"DIVINE_DOGS","name":"Divine Dogs","colorPrimary":"#2E1065","colorSecondary":"#D3CCD9","ambient":"#07060C","particleStyle":"smoke","motionStyle":"claws","duration_ms":650,"vfxTier":"medium","notes":[180,130,90],"wave":"triangle","noise":0.22},
+    {"gestureId":"NUE","name":"Nue","colorPrimary":"#B47BEA","colorSecondary":"#F5DCFF","ambient":"#251333","particleStyle":"streaks","motionStyle":"lightning","duration_ms":600,"vfxTier":"medium","notes":[920,140,720,80],"wave":"square","noise":0.6},
+    {"gestureId":"MAHORAGA","name":"Mahoraga","colorPrimary":"#BEA56D","colorSecondary":"#FFF5CF","ambient":"#241E10","particleStyle":"embers","motionStyle":"wheel","duration_ms":1200,"vfxTier":"high","notes":[220,330,440,660],"wave":"triangle","noise":0.16},
+    {"gestureId":"GOJO_ULTIMATE","name":"Unlimited Void","colorPrimary":"#508AFF","colorSecondary":"#F5F3FF","ambient":"#01020C","particleStyle":"stars","motionStyle":"void","duration_ms":1400,"vfxTier":"high","notes":[110,165,247,370],"wave":"sine","noise":0.12},
+    {"gestureId":"SUKUNA_ULTIMATE","name":"Malevolent Shrine","colorPrimary":"#8B0000","colorSecondary":"#EFCEC5","ambient":"#090303","particleStyle":"streaks","motionStyle":"shrine","duration_ms":1350,"vfxTier":"high","notes":[82,123,98,49],"wave":"sawtooth","noise":0.28},
+    {"gestureId":"MEGUMI_ULTIMATE","name":"Chimera Shadow Garden","colorPrimary":"#2E1065","colorSecondary":"#A4A2C4","ambient":"#05060B","particleStyle":"smoke","motionStyle":"garden","duration_ms":1300,"vfxTier":"high","notes":[130,65,98,44],"wave":"sine","noise":0.3},
+    {"gestureId":"REVERSAL_RED","name":"Reversal: Red","colorPrimary":"#FF1E3C","colorSecondary":"#FFF1EF","ambient":"#460411","particleStyle":"streaks","motionStyle":"repel","duration_ms":520,"vfxTier":"medium","notes":[130,260,780],"wave":"sawtooth","noise":0.32},
+    {"gestureId":"AMPLIFICATION_BLUE","name":"Amplification: Blue","colorPrimary":"#1E5FFF","colorSecondary":"#C7FAFF","ambient":"#031445","particleStyle":"embers","motionStyle":"attract","duration_ms":600,"vfxTier":"medium","notes":[790,390,160],"wave":"sine","noise":0.08},
+    {"gestureId":"GRANITE_BLAST","name":"Granite Blast","colorPrimary":"#71DED9","colorSecondary":"#FFF5FF","ambient":"#123A3D","particleStyle":"streaks","motionStyle":"granite","duration_ms":520,"vfxTier":"medium","notes":[95,190,760],"wave":"square","noise":0.4},
+    {"gestureId":"RYU_ULTIMATE","name":"Way Too Sweet!","colorPrimary":"#71DED9","colorSecondary":"#EEFFFD","ambient":"#123A3D","particleStyle":"embers","motionStyle":"restore","duration_ms":850,"vfxTier":"medium","notes":[262,330,392,523],"wave":"sine","noise":0.02},
+    {"gestureId":"YUJI_ULTIMATE","name":"Straight Hands","colorPrimary":"#16BFE0","colorSecondary":"#EAFCFF","ambient":"#073F4A","particleStyle":"streaks","motionStyle":"combo","duration_ms":650,"vfxTier":"medium","notes":[72,96,128,192],"wave":"square","noise":0.48},
+    {"gestureId":"CURSED_TOOLS","name":"Cursed Tools","colorPrimary":"#C3D1DB","colorSecondary":"#FFFFFF","ambient":"#24262A","particleStyle":"streaks","motionStyle":"blade","duration_ms":450,"vfxTier":"low","notes":[1400,2100,700],"wave":"triangle","noise":0.2},
+    {"gestureId":"CURSE_SWALLOW","name":"Curse Swallow","colorPrimary":"#684588","colorSecondary":"#BCA1CA","ambient":"#150B20","particleStyle":"smoke","motionStyle":"swallow","duration_ms":650,"vfxTier":"medium","notes":[440,220,55],"wave":"sine","noise":0.18},
+    {"gestureId":"GETO_ULTIMATE","name":"Maximum: Uzumaki","colorPrimary":"#776480","colorSecondary":"#E3CED7","ambient":"#190F23","particleStyle":"smoke","motionStyle":"uzumaki","duration_ms":1100,"vfxTier":"high","notes":[65,130,260,520],"wave":"sawtooth","noise":0.22},
+    {"gestureId":"RIKA","name":"Rika","colorPrimary":"#BA70D2","colorSecondary":"#F5EADB","ambient":"#210C2E","particleStyle":"smoke","motionStyle":"spirit","duration_ms":780,"vfxTier":"high","notes":[233,466,349],"wave":"triangle","noise":0.15},
+    {"gestureId":"YUTA_ULTIMATE","name":"Copy","colorPrimary":"#CF73E6","colorSecondary":"#FAEBFF","ambient":"#290E36","particleStyle":"embers","motionStyle":"copy","duration_ms":950,"vfxTier":"medium","notes":[330,495,660,990],"wave":"triangle","noise":0.04},
+    {"gestureId":"CHOSO_ULTIMATE","name":"Supernova","colorPrimary":"#A80022","colorSecondary":"#FF6D77","ambient":"#2C000A","particleStyle":"droplets","motionStyle":"supernova","duration_ms":820,"vfxTier":"high","notes":[145,290,580,70],"wave":"sawtooth","noise":0.42},
+    {"gestureId":"HOLLOW_PURPLE","name":"Hollow Purple","colorPrimary":"#8B2EFF","colorSecondary":"#FFF0FF","ambient":"#290949","particleStyle":"stars","motionStyle":"purple","screenShake":3,"duration_ms":880,"vfxTier":"high","notes":[196,294,588,98],"wave":"sine","noise":0.28}
+  ]
+}

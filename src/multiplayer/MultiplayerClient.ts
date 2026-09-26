@@ -2,7 +2,7 @@ import type {CombatAction as AbilityId} from '../combat/CombatManager';
 import type {HandOrigin} from '../effects/MovePalette';
 export interface NetDomain {id:AbilityId;owner:number;castAt:number;activeAt:number;endAt:number}
 export interface NetPlayer {characterId:string;ready:boolean;telemetry:{hands:number;fps:number;camera:boolean}}
-export interface NetEvent {seq:number;type:string;owner?:number;target?:number;id?:AbilityId;damage?:number;winner?:number|null;reason?:string;origin?:HandOrigin;at?:number;round?:number}
+export interface NetEvent {seq:number;type:string;owner?:number;target?:number;id?:AbilityId;damage?:number;winner?:number|null;reason?:string;origin?:HandOrigin;at?:number;round?:number;blackFlash?:boolean}
 export interface MatchSnapshot {code:string;seat:number;round:number;game:any;phase:'waiting'|'countdown'|'playing'|'finished';now:number;startedAt:number;winner:number|null;reason:string;players:(NetPlayer|null)[];domains:NetDomain[];events:NetEvent[];peerSignal?:{seq:number;type:"offer"|"answer";sdp:string}|null;cameraActive?:boolean[]}
 export class MultiplayerClient {
  private socket:WebSocket|null=null;private live=false;private reconnectTimer=0;private nextRequest=0;

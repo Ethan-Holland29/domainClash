@@ -88,7 +88,7 @@ inputs.subscribe(input => {
     return;
   }
   document.querySelector('#ability-status')!.textContent = `${selectedCharacter.name} — ${GESTURE_LABELS[input.gesture]} input received (${input.source === 'button' ? 'manual test' : 'camera'}). Practice input only.`;
-  effects?.play(input.gesture,handOrigin??{x:.5,y:.6});
+  effects?.play(input.gesture,handOrigin??{x:.5,y:.6},false,selectedCharacter.id);
 });
 let selectedCharacter = CHARACTERS[0];
 const combat = new CombatManager(selectedCharacter);
@@ -113,6 +113,12 @@ function selectCharacter(): void {
     button.onclick = () => inputs.send(selectedCharacter, gesture, 'button');
     return button;
   }));
+  if(selectedCharacter.id==='gojo'||selectedCharacter.id==='yuji'){
+    const preview=document.createElement('button');const purple=selectedCharacter.id==='gojo';
+    preview.textContent=purple?'Hollow Purple (VFX preview)':'Black Flash (VFX preview)';
+    preview.onclick=()=>effects?.play(purple?'HOLLOW_PURPLE':'BASIC_PUNCH',handOrigin??{x:.5,y:.6},false,selectedCharacter.id,0,!purple);
+    document.querySelector('#manual-inputs')!.append(preview);
+  }
   document.querySelector('#kit')!.textContent = `Shared attack and abilities${selectedCharacter.abilityGroup ? ` — ${selectedCharacter.abilityGroup}` : ""}: ${selectedCharacter.abilities.map(g => GESTURE_LABELS[g]).join(', ')}. ${selectedCharacter.ultimate?.name ?? 'No active ultimate assigned'}. ${selectedCharacter.plannedKit ? `Planned technique: ${selectedCharacter.plannedKit.technique ?? 'None'}. Planned ultimate: ${selectedCharacter.plannedKit.ultimate ?? 'None for now'}. Combat effects pending. ` : ''}Meter: ${selectedCharacter.meter}.`;
   document.querySelector('#ability-status')!.textContent = 'Select Combat to play or use the other tabs to practice.';
 }
@@ -151,8 +157,10 @@ new CharacterSelect(document.querySelector<HTMLElement>('#character-screen')!, i
 });
 multiplayer=new MultiplayerSession(app,combat,combatPanel,videoEl,id=>{characterSelect.value=id;selectCharacter();},()=>bootstrap(),()=>gestures.update([],performance.now()));
 effects=new BattleEffects(app.querySelector('.camera-column .stage')!,app.querySelector('.remote-camera-column .stage')!);
-combat.onCast=(action,side)=>{if(!multiplayer?.active)effects?.play(action,side==='player'?(handOrigin??{x:.5,y:.6}):{x:.5,y:.3});};
-multiplayer.onCast=(action,origin,remote)=>effects?.play(action,origin,remote);
+combat.onCast=(action,side)=>{if(!multiplayer?.active)effects?.play(action,side==='player'?(handOrigin??{x:.5,y:.6}):{x:.5,y:.3},false,(side==='player'?combat.player:combat.opponent).character.id);};
+combat.onBlackFlash=(action,side)=>{if(!multiplayer?.active)effects?.play(action,side==='player'?(handOrigin??{x:.5,y:.6}):{x:.5,y:.3},false,'yuji',0,true);};
+multiplayer.onCast=(action,origin,remote,characterId,age,blackFlash)=>effects?.play(action,origin,remote,characterId,age,blackFlash);
+effects.debugState=()=>`You: ${combat.player.hp} HP · meter ${combat.player.meter}\nOpponent: ${combat.opponent.hp} HP · meter ${combat.opponent.meter}\nTurn: ${combat.turn} · cooldowns (turns): ${Array.from(combat.player.cooldowns,([id,n])=>`${id} ${Math.max(0,n-combat.player.turns)}`).join(', ')||'none'}`;
 multiplayer.onReset=()=>effects?.clear();
 window.addEventListener('hashchange', applyPage);
 applyPage();
@@ -201,7 +209,7 @@ async function detectionLoop(): Promise<void> {
   let result;
   try{result=await tracker.detectForVideo(videoEl,now);}catch(error){if(disposed)return;console.warn('Tracking interrupted',error);hud.setMessage('Hand tracking interrupted. Click Retry camera to restart it.');retryCamera.hidden=false;return;}
   if(!tracker.isReady)return;
-  const palm=result.hands.flatMap(h=>[0,5,9,13,17].map(i=>h.landmarks[i]));
+  const palm=result.hands.flatMap(h=>[0,5,8,9,12,17].map(i=>h.landmarks[i]));
   handOrigin=palm.length?{x:palm.reduce((n,p)=>n+p.x,0)/palm.length,y:palm.reduce((n,p)=>n+p.y,0)/palm.length}:null;
   if(multiplayer)multiplayer.handOrigin=handOrigin;
   multiplayer?.telemetry(result.hands.length,fps,true);
@@ -214,6 +222,7 @@ async function detectionLoop(): Promise<void> {
     now,
   );
 
+  effects?.charge(!trainer.active&&!demo.active&&!gestureState.confirmedGesture?gestureState.candidateGesture:null,handOrigin,gestureState.holdProgress,selectedCharacter.id);
   hud.update({
     handsDetected: result.hands.length,
     handedness: result.hands.map((h) => `${h.handedness} (${(h.handednessScore * 100).toFixed(0)}%)`),

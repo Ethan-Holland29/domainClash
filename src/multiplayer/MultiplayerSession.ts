@@ -12,7 +12,7 @@ import {validOrigin,type HandOrigin} from '../effects/MovePalette';
 export class MultiplayerSession {
  active=false;
  handOrigin:HandOrigin|null=null;
- onCast:(action:CombatAction,origin:HandOrigin,remote:boolean)=>void=()=>{};
+ onCast:(action:CombatAction,origin:HandOrigin,remote:boolean,characterId:string,age:number,blackFlash:boolean)=>void=()=>{};
  onReset:()=>void=()=>{};
  private lastViewAt=0;
  readonly client=new MultiplayerClient();
@@ -41,7 +41,7 @@ export class MultiplayerSession {
   this.peer.onFrame=frame=>{const canvas=this.remote.querySelector('canvas')!;canvas.hidden=!frame;if(frame){canvas.width=frame.width;canvas.height=frame.height;canvas.getContext('2d')!.drawImage(frame,0,0);frame.close();}};
   this.client.onState=s=>this.update(s);this.client.onStatus=text=>{this.lobby.querySelector('.lobby-status')!.textContent=text;this.screen.querySelector('.mp-selection-status')!.textContent=text;if(this.active&&this.lastPhase!=='waiting')app.querySelector('#combat-status')!.textContent=text;};
   this.client.onExpired=()=>void this.leave();
-  this.client.onEvent=e=>{const s=this.client.state;if(e.type==='cast'&&e.id&&s&&e.round===s.round&&s.now-(e.at??0)<1800)this.onCast(e.id,validOrigin(e.origin)??{x:.5,y:.6},e.owner!==s.seat);};
+  this.client.onEvent=e=>{const s=this.client.state;if(e.type==='cast'&&e.id&&s&&e.round===s.round&&s.now-(e.at??0)<1800)this.onCast(e.id,validOrigin(e.origin)??{x:.5,y:.6},e.owner!==s.seat,s.players[e.owner??s.seat]?.characterId??'',Math.max(0,s.now-(e.at??s.now)),e.blackFlash===true);};
   const draw=()=>{if(this.active&&this.client.state){this.peer.update(this.client.state);}this.frame=requestAnimationFrame(draw);};draw();
  }
  private selectDesired(){if(this.selectionJob)return this.selectionJob;this.selectionJob=(async()=>{try{let sent='';while(this.active&&sent!==this.desired){sent=this.desired;const ok=await this.client.action('select',{id:sent,round:this.client.state?.round});if(!ok)break;}}finally{this.selectionJob=null;}})();return this.selectionJob;}

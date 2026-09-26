@@ -49,6 +49,8 @@ const actionLabel = (action: CombatAction) => action === 'HOLLOW_PURPLE' ? 'Holl
 
 export interface PassivePopup { serial: number; side: Side; character: string; name: string; message: string; batch: number; }
 export class CombatManager {
+  lastCastBlackFlash=false;
+  onBlackFlash:(action:CombatAction,side:'player'|'enemy')=>void=()=>{};
   onCast: (action:CombatAction,side:'player'|'enemy')=>void=()=>{};
   passivePopup: PassivePopup | null = null;
   private passiveQueue: PassivePopup[] = [];
@@ -91,6 +93,7 @@ export class CombatManager {
   get opponentHp(): number { return this.opponent.hp; }
   get meter(): number { return this.player.meter; }
   reset(character = this.character, opponent = this.opponent.character): void {
+    this.lastCastBlackFlash=false;
     this.player = makeFighter(character); this.opponent = makeFighter(opponent);
     this.elapsed = 0; this.turn = 'player'; this.turnNumber = 1; this.responseAt = 0;
     this.technique = ''; this.techniqueSerial++; this.log = [];
@@ -232,6 +235,7 @@ export class CombatManager {
     const f = this.fighter(side); const enemy = this.fighter(this.other(side));
     const reason = this.unavailable(action, f);
     if (reason) { this.note(reason); return false; }
+    this.lastCastBlackFlash=false;
     this.onCast(action,side);
     const ultimate = action === f.character.ultimate?.gesture || action === 'HOLLOW_PURPLE';
     const punch = action === 'BASIC_PUNCH';
@@ -306,11 +310,13 @@ export class CombatManager {
       let dealt: number;
       if (action === 'YUJI_ULTIMATE') {
         const result = enemy.character.id === 'toji' ? {hits:[10,10,10,10], flashes:0} : straightHands(this.random);
+        if(result.flashes){this.lastCastBlackFlash=true;this.onBlackFlash(action,side);}
         if (result.flashes && !copied) this.passive(f);
         dealt = result.hits.reduce((total, hit, index) => total + this.hurt(enemy, (copied ? Math.floor(hit * .8) : hit) + (index === 0 ? f.weaponBonus : 0), 'ultimate', f), 0);
         this.note(`Straight Hands: four punches, ${result.flashes} Black Flash hit(s).`);
       } else {
         if (punch && f.character.id === 'yuji' && enemy.character.id !== 'toji' && rollBlackFlash(this.random)) {
+          this.lastCastBlackFlash=true;this.onBlackFlash(action,side);
           damage *= 2; this.passive(f); this.note('Black Flash! Double punch damage.');
         }
         dealt = this.hurt(enemy, damage + (damage > 0 ? f.weaponBonus : 0), ultimate ? 'ultimate' : punch ? 'basic' : 'technique', f);
