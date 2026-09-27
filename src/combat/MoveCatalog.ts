@@ -1,0 +1,263 @@
+import { AbilityId } from "./AbilityTypes";
+import { MOVES as BATTLE_MOVES } from '../../shared/battle.mjs';
+export interface Move { id: AbilityId; name: string; user: string; sign: string; description: string; short: string; cooldownMs: number; durationMs: number; color: string; sound: string; note: string }
+export const Moves: Move[] = [
+  {
+    "id": "PRIMARY_ATTACK",
+    "name": "Cleave",
+    "user": "Sukuna",
+    "sign": "Spread all five fingers with your palm facing the camera.",
+    "description": "A fan of luminous cutting blades releases from your palm.",
+    "short": "Open palm",
+    "cooldownMs": 1000,
+    "durationMs": 0,
+    "color": "#a5fff2",
+    "sound": "Sharp double slash",
+    "note": "Webcam shortcut for the cutting technique."
+  },
+  {
+    "id": "SECONDARY_ATTACK",
+    "name": "Piercing Blood",
+    "user": "Blood Manipulation",
+    "sign": "Point your index finger; fold your ring and little fingers. Aim the fingertip toward the target.",
+    "description": "Concentrated blood spirals into a crimson core before firing a narrow beam.",
+    "short": "Index out; ring + pinky folded",
+    "cooldownMs": 1000,
+    "durationMs": 0,
+    "color": "#ff3158",
+    "sound": "Rising liquid-pressure buzz",
+    "note": "Webcam shortcut; the series uses two-handed compression."
+  },
+  {
+    "id": "DOMAIN_EXPANSION",
+    "name": "Chimera Shadow Garden",
+    "user": "Megumi Fushiguro",
+    "sign": "Clasp both hands tightly with fingers interlaced; bring the curled fingers together in front of your chest.",
+    "description": "A liquid shadow floor spreads outward, with dark tendrils and ripples.",
+    "short": "Two close, clasped fists",
+    "cooldownMs": 14000,
+    "durationMs": 9000,
+    "color": "#aa80ff",
+    "sound": "Deep ascending shadow chord",
+    "note": "Keep both wrists visible; detection approximates the clasp with two close fists."
+  },
+  {
+    "id": "MALEVOLENT_SHRINE",
+    "name": "Malevolent Shrine",
+    "user": "Sukuna",
+    "sign": "Bring both hands together. Raise the middle and ring fingers into a joined roof; curl the index and little fingers and bring the thumbs inward.",
+    "description": "A sinister shrine rises behind a storm of intersecting slashes.",
+    "short": "Middle + ring up; index + pinky curled",
+    "cooldownMs": 15000,
+    "durationMs": 8000,
+    "color": "#ff6755",
+    "sound": "Low temple bell and cutting bursts",
+    "note": "Based on the supplied illustration; separate the wrists slightly for tracking."
+  },
+  {
+    "id": "UNLIMITED_VOID",
+    "name": "Unlimited Void",
+    "user": "Satoru Gojo",
+    "sign": "Raise one hand. Cross the index and middle fingers; tuck the ring and little fingers under your thumb.",
+    "description": "A dark singularity opens into a star field and luminous information streams.",
+    "short": "One hand; crossed index + middle",
+    "cooldownMs": 13000,
+    "durationMs": 7000,
+    "color": "#85caff",
+    "sound": "High glassy ascending shimmer",
+    "note": "Camera checks a close index/middle pair; exact finger crossing may be occluded."
+  },
+  {
+    "id": "IRON_MOUNTAIN",
+    "name": "Coffin of the Iron Mountain",
+    "user": "Jogo",
+    "sign": "Interlace the fingers of both hands diagonally, palms angled toward each other, forming the sloping mountain shape in the reference.",
+    "description": "A volcanic chamber surrounds the camera with molten fissures, embers and rising rocks.",
+    "short": "Interlace diagonally; fingers partly bent",
+    "cooldownMs": 14000,
+    "durationMs": 7500,
+    "color": "#ff9b38",
+    "sound": "Rumbling sawtooth and ember crackles",
+    "note": "Camera approximation: two close hands with partly bent fingers, angled inward."
+  },
+  {
+    "id": "SELF_EMBODIMENT",
+    "name": "Self-Embodiment of Perfection",
+    "user": "Mahito",
+    "sign": "Touch the thumbs to form the lower opening; join raised fingertips into a steeple and flare the remaining fingers as illustrated.",
+    "description": "Interconnected spectral hands and a soul-like lattice spread around the frame.",
+    "short": "Thumbs together; raised finger steeple",
+    "cooldownMs": 14000,
+    "durationMs": 7500,
+    "color": "#d9a4ff",
+    "sound": "Dissonant wavering chimes",
+    "note": "Two-hand adaptation of the illustration; Mahito also forms signs with extra hands inside his mouth."
+  },
+  {
+    "id": "MUTUAL_LOVE",
+    "name": "Authentic Mutual Love",
+    "user": "Yuta Okkotsu",
+    "sign": "Hold one hand upright and flat with fingers together. Make a fist with the other hand beside it, thumb pointing outward.",
+    "description": "A field of glowing katana and red binding cords evokes copied techniques and devotion.",
+    "short": "One upright palm + one fist",
+    "cooldownMs": 14000,
+    "durationMs": 8000,
+    "color": "#ffc3df",
+    "sound": "Warm plucked ascending arpeggio",
+    "note": "Keep the open palm and fist individually visible."
+  },
+  {
+    "id": "CAPTIVATING_SKANDHA",
+    "name": "Horizon of the Captivating Skandha",
+    "user": "Dagon",
+    "sign": "Curve and interlace both sets of fingers into a rounded clasp. Keep the palms apart to leave a hollow, cupped opening underneath.",
+    "description": "Turquoise ocean waves and swimming aquatic silhouettes surround a tropical horizon.",
+    "short": "Cupped clasp; palms slightly apart",
+    "cooldownMs": 14000,
+    "durationMs": 8000,
+    "color": "#58e0df",
+    "sound": "Rolling surf and descending bubbles",
+    "note": "Webcam approximation: two curved hands separated by a small palm-sized gap."
+  },
+  {
+    "id": "YUJI_DOMAIN",
+    "name": "Yuji Itadori’s unnamed domain expansion",
+    "user": "Yuji Itadori",
+    "sign": "Interlock the lower fingers of both hands. Extend both index fingers vertically side by side, with their tips pointing upward.",
+    "description": "A quiet sunset town and railway motif contrasts with bright soul-cutting slashes.",
+    "short": "Paired upright index fingers",
+    "cooldownMs": 13000,
+    "durationMs": 7000,
+    "color": "#ffca8f",
+    "sound": "Railway-like two-note bell and heartbeat",
+    "note": "The name remains unrevealed. Scenic treatment interprets the hometown sequence."
+  },
+  {
+    "id": "WOMB_PROFUSION",
+    "name": "Womb Profusion",
+    "user": "Kenjaku",
+    "sign": "Interlace the lower fingers; raise the long finger pair diagonally into an X. Bring the thumbs together below the crossing, following the reference.",
+    "description": "A branching tree of stylized masks and roots unfurls with concentric pressure waves.",
+    "short": "Crossed raised fingers; lower fingers folded",
+    "cooldownMs": 15000,
+    "durationMs": 8000,
+    "color": "#ceab78",
+    "sound": "Low wooden knocks and descending drone",
+    "note": "Also requested as Womb Perfusion. Camera approximation uses two diagonally crossed pointing hands."
+  },
+  {
+    "id": "DEATH_GAMBLE",
+    "name": "Idle Death Gamble",
+    "user": "Kinji Hakari",
+    "sign": "Hold one hand flat, palm upward. Above it, turn the other hand sideways and form a thumb/index circle, with the remaining fingers stretched sideways.",
+    "description": "Pachinko reels, neon rails and a gold jackpot burst fill the edges.",
+    "short": "Pinch circle above a flat palm",
+    "cooldownMs": 15000,
+    "durationMs": 8500,
+    "color": "#8bffa5",
+    "sound": "Original arcade jackpot fanfare",
+    "note": "Also called Death Gamble. Shortened gameplay duration; no copyrighted song recording is used."
+  },
+  {
+    "id": "RYU_DOMAIN",
+    "name": "Ryu Ishigori’s unknown domain expansion",
+    "user": "Ryu Ishigori",
+    "sign": "Face both palms forward. Join the thumbs in a low arch, weave the central fingers together, and lift the outer fingers as shown.",
+    "description": "Granite fragments and concentrated energy beams erupt from the hands.",
+    "short": "Thumb arch; index + pinky lifted",
+    "cooldownMs": 14000,
+    "durationMs": 7500,
+    "color": "#e7beff",
+    "sound": "Heavy bass blast with bright overtone",
+    "note": "Domain name and effects are unrevealed. VFX interpret Granite Blast; camera checks the outer-finger silhouette."
+  },
+  {
+    "id": "URO_DOMAIN",
+    "name": "Takako Uro’s unknown domain expansion",
+    "user": "Takako Uro",
+    "sign": "Cross the wrists in an X. Close both hands into fists with the thumbs extended outward on opposite sides.",
+    "description": "The sky becomes a refracting sheet of glass, fractured by curved light ribbons.",
+    "short": "Cross wrists; fists with thumbs out",
+    "cooldownMs": 14000,
+    "durationMs": 7500,
+    "color": "#b0eaff",
+    "sound": "Airy sweep and brittle glass chimes",
+    "note": "Domain name and effects are unrevealed. VFX interpret Sky Manipulation; forearm crossing is approximated from wrist positions."
+  },
+  {
+    "id": "LAPSE_BLUE",
+    "name": "Cursed Technique Lapse: Blue",
+    "user": "Satoru Gojo",
+    "sign": "Close one hand into a fist and tuck the thumb across the fingers.",
+    "description": "A cobalt attraction vortex collapses inward at your fist.",
+    "short": "Fist; thumb tucked",
+    "cooldownMs": 1000,
+    "durationMs": 0,
+    "color": "#55baff",
+    "sound": "Descending suction whistle",
+    "note": "Single-hand webcam shortcut, not a claim to reproduce the full canonical activation sequence."
+  },
+  {
+    "id": "REVERSAL_RED",
+    "name": "Cursed Technique Reversal: Red",
+    "user": "Satoru Gojo",
+    "sign": "Make a thumb/index circle on one hand; extend the middle, ring and little fingers.",
+    "description": "A red repulsion orb detonates outward in a sharp shockwave.",
+    "short": "OK sign; three fingers raised",
+    "cooldownMs": 1000,
+    "durationMs": 0,
+    "color": "#ff526c",
+    "sound": "Ascending pressure pop",
+    "note": "Single-hand webcam shortcut, not a claim to reproduce the full canonical activation sequence."
+  },
+  {
+    "id": "HOLLOW_PURPLE",
+    "name": "Hollow Purple",
+    "user": "Satoru Gojo",
+    "sign": "Raise the index and little fingers on one hand; fold the middle and ring fingers.",
+    "description": "Red and blue converge into a purple projectile that launches from your hand.",
+    "short": "Index + pinky up; middle + ring folded",
+    "cooldownMs": 1000,
+    "durationMs": 0,
+    "color": "#bc83ff",
+    "sound": "Two-tone fusion and bass snap",
+    "note": "Single-hand webcam shortcut, not a claim to reproduce the full canonical activation sequence."
+  },
+  {
+    "id": "BLACK_FLASH",
+    "name": "Black Flash",
+    "user": "Yuji Itadori",
+    "sign": "Close one hand into a fist with the thumb clearly extended outward.",
+    "description": "Black-and-crimson lightning explodes around a compact impact.",
+    "short": "Fist; thumb extended",
+    "cooldownMs": 1000,
+    "durationMs": 0,
+    "color": "#ff4463",
+    "sound": "Dry impact crack and low thump",
+    "note": "Gameplay gesture shortcut. Black Flash is not canonically usable at will."
+  }
+];
+const additionalMoves = [["BASIC_PUNCH","Punch","BLACK_FLASH","#e4ecff",6,4],["DIVINE_DOGS","Divine Dogs","PRIMARY_ATTACK","#8ca9ea",9,10],["NUE","Nue","HOLLOW_PURPLE","#ac83ff",12,18],["DISMANTLE","Dismantle","PRIMARY_ATTACK","#ff8a91",11,14],["SUPERNOVA","Supernova","REVERSAL_RED","#c52353",19,34],["GRANITE_BLAST","Granite Blast","HOLLOW_PURPLE","#e7beff",16,28],["SOUL_SPLIT","Soul Split Katana","PRIMARY_ATTACK","#b3d8a9",12,16],["HEAVENLY_RUSH","Heavenly Rush","BLACK_FLASH","#b3d8a9",18,30],["CURSE_SWARM","Curse Swarm","LAPSE_BLUE","#b797db",9,10],["CURSE_SWALLOW","Curse Swallow","REVERSAL_RED","#9d75bd",11,14],["UZUMAKI","Maximum: Uzumaki","HOLLOW_PURPLE","#b797db",20,38],["KATANA","Katana","PRIMARY_ATTACK","#c1e7ff",8,8],["RIKA","Rika","BLACK_FLASH","#d9aaff",15,26]] as const;
+export const EffectAliases: Partial<Record<AbilityId, AbilityId>> = {};
+for (const [id, name, base, color] of additionalMoves) {
+  const source = Moves.find(m => m.id === base)!;
+  const battleMoveId = ({DISMANTLE:'CLEAVE',SUPERNOVA:'CHOSO_ULTIMATE',SOUL_SPLIT:'CURSED_TOOLS',UZUMAKI:'GETO_ULTIMATE'} as Record<string,string>)[id] ?? id;
+  const battleMove = BATTLE_MOVES[battleMoveId];
+  EffectAliases[id] = base;
+  Moves.push({...source, id, name, color, user: 'Character technique', durationMs: 0,
+    sign: id === 'BASIC_PUNCH' ? 'Close one hand into a fist.' : 'Record your own sign in Gesture training.',
+    short: id === 'BASIC_PUNCH' ? 'Closed fist' : 'Custom sign · train first',
+    description: battleMove?.lore ?? (id==='CURSE_SWARM'?'A stored cursed spirit attacks alongside Geto.':id==='KATANA'?'Yuta strikes with his katana.':id==='HEAVENLY_RUSH'?'Toji closes the distance and attacks with overwhelming physical speed.':'Character-specific technique.'),
+    note: battleMove?.text ?? 'Character-specific ability.'});
+}
+// Keep the move guide focused on what each technique does in battle, not on
+// visual-effect copy that had replaced the original ability descriptions.
+for (const move of Moves) {
+  const battleMove = BATTLE_MOVES[move.id];
+  if (!battleMove) continue;
+  if (battleMove.lore) move.description = battleMove.lore;
+  move.note = battleMove.text ?? move.note;
+}
+export const MoveById = Object.fromEntries(Moves.map(m=>[m.id,m])) as Record<AbilityId,Move>;
+export const isDomain = (id: AbilityId): boolean => MoveById[id].durationMs > 0;
+export const holdMs = (id: AbilityId): number => isDomain(id) ? 650 : id === AbilityId.PRIMARY_ATTACK ? 380 : 420;

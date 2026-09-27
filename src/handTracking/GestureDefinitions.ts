@@ -19,7 +19,7 @@ import {
   fingerSpread,
   getFingerExtension,
   handScale,
-} from "./handGeometry";
+} from "./HandGeometry";
 
 function evaluation(gesture: GestureType, checks: Record<string, boolean>): GestureEvaluation {
   const values = Object.values(checks);
@@ -168,4 +168,17 @@ export const GESTURE_EVALUATORS: Record<GestureType, (hands: TrackedHand[]) => G
 
 export function evaluateAllGestures(hands: TrackedHand[]): GestureEvaluation[] {
   return Object.values(GESTURE_EVALUATORS).map((fn) => fn(hands));
+}
+
+/** Adapter retained for older recognizer modules still imported by the app. */
+export function evaluateGestures(hands: TrackedHand[]) {
+  return evaluateAllGestures(hands).map(({ gesture, matched, debug }) => ({
+    id: gesture,
+    displayName: gesture,
+    passed: matched,
+    score: debug.score,
+    checks: Object.entries(debug.checks).map(([name, passed]) => ({
+      name, passed, value: passed ? 1 : 0, detail: '',
+    })),
+  }));
 }

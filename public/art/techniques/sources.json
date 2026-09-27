@@ -1,0 +1,308 @@
+[
+  {
+    "asset": "nue.webp",
+    "sourceImage": "https://pbs.twimg.com/media/EqEwnvvVQAAzb3L.jpg",
+    "cropPixels": [
+      0,
+      0,
+      1200,
+      440
+    ],
+    "mask": "manual silhouette / color-key",
+    "size": [
+      1200,
+      394
+    ]
+  },
+  {
+    "asset": "dogs.webp",
+    "sourceImage": "https://a.storyblok.com/f/178900/1920x1080/0d77568cd6/jujutsu-kaisen-e55-megumi.jpg",
+    "cropPixels": [
+      330,
+      240,
+      810,
+      842
+    ],
+    "mask": "manual silhouette / color-key",
+    "size": [
+      481,
+      603
+    ],
+    "notes": "Season 3 episode 55 promotional still; Divine Dog head isolated, caster excluded."
+  },
+  {
+    "asset": "red.webp",
+    "sourceImage": "https://i.ytimg.com/vi/442c2fp_4ds/maxresdefault.jpg",
+    "cropPixels": [
+      555,
+      230,
+      738,
+      391
+    ],
+    "mask": "manual silhouette / color-key",
+    "size": [
+      183,
+      161
+    ]
+  },
+  {
+    "asset": "blue.webp",
+    "sourceImage": "https://static.deltiasgaming.com/2025/02/gojos-Blue-1536x864.jpg",
+    "cropPixels": [
+      477,
+      442,
+      920,
+      842
+    ],
+    "mask": "manual silhouette / color-key",
+    "size": [
+      443,
+      400
+    ]
+  },
+  {
+    "asset": "purple.webp",
+    "sourceImage": "https://cdn.shopify.com/s/files/1/0400/9767/7479/files/Jujutsu_Kaisen_Effect_Of_Gojo_s_Purple_Technique.png?v=1744917273",
+    "cropPixels": [
+      244,
+      220,
+      650,
+      616
+    ],
+    "mask": "manual silhouette / color-key",
+    "size": [
+      406,
+      396
+    ]
+  },
+  {
+    "asset": "rika.webp",
+    "sourceImage": "https://s.cinemacafe.net/imgs/p/HYddfX70X05nh6LzkP_ZwgIDWA8ODQwLCgkI/537806.jpg?zoom=spacing",
+    "cropPixels": [
+      214,
+      0,
+      600,
+      558
+    ],
+    "mask": "manual silhouette / color-key",
+    "size": [
+      386,
+      558
+    ]
+  },
+  {
+    "asset": "granite.webp",
+    "sourceImage": "https://img.animanch.com/2022/03/1-10.jpg",
+    "cropPixels": [
+      135,
+      163,
+      728,
+      386
+    ],
+    "mask": "manual silhouette / color-key",
+    "size": [
+      593,
+      223
+    ]
+  },
+  {
+    "asset": "blood.webp",
+    "sourceImage": "https://cdn.shopify.com/s/files/1/0400/9767/7479/files/Jujutsu_Kaisen_Piercing_Blood_Technique.png?v=1750355614",
+    "cropPixels": [
+      790,
+      255,
+      1280,
+      393
+    ],
+    "mask": "manual silhouette / color-key",
+    "size": [
+      449,
+      103
+    ]
+  },
+  {
+    "asset": "supernova.webp",
+    "sourceImage": "https://jujutsu-kaisen-wiki.vercel.app/assets/supernova-2.webp",
+    "cropPixels": null,
+    "mask": "manual silhouette / color-key",
+    "size": [
+      1200,
+      628
+    ]
+  },
+  {
+    "asset": "slash.webp",
+    "sourceImage": "https://i.imgur.com/Y94qsv3.png",
+    "cropPixels": [
+      0,
+      0,
+      1980,
+      880
+    ],
+    "mask": "manual silhouette / color-key",
+    "size": [
+      1400,
+      595
+    ]
+  },
+  {
+    "asset": "blackflash.webp",
+    "sourceImage": "https://www.looper.com/img/gallery/yuji-itadoris-powers-from-jujutsu-kaisen-explained/yuji-learns-the-black-flash-technique-1633188559.jpg",
+    "cropPixels": [
+      210,
+      0,
+      650,
+      360
+    ],
+    "mask": "manual silhouette / color-key",
+    "size": [
+      440,
+      360
+    ]
+  },
+  {
+    "asset": "swallow.webp",
+    "sourceImage": "https://cdn-ak.f.st-hatena.com/images/fotolife/L/Lastbreath/20231223/20231223063515.png",
+    "cropPixels": [
+      447,
+      263,
+      654,
+      424
+    ],
+    "mask": "manual silhouette / color-key",
+    "size": [
+      207,
+      161
+    ]
+  },
+  {
+    "asset": "uzumaki.webp",
+    "sourceImage": "https://pbs.twimg.com/media/GD81f8tawAAONd0.png",
+    "cropPixels": [
+      160,
+      65,
+      341,
+      263
+    ],
+    "mask": "manual silhouette / color-key",
+    "size": [
+      181,
+      198
+    ]
+  },
+  {
+    "asset": "spear.webp",
+    "sourceImage": "https://theswordstall.co.uk/cdn/shop/articles/Inverted_Spear_of_Heaven__28Anime_29.webp?v=1733166374",
+    "cropPixels": [
+      140,
+      0,
+      1500,
+      1006
+    ],
+    "mask": "manual silhouette / color-key",
+    "size": [
+      1341,
+      1006
+    ]
+  },
+  {
+    "asset": "fist.webp",
+    "sourceImage": "https://cdn.alfabetajuega.com/alfabetajuega/2021/07/Crear-una-tecnica-maldita-y-ser-capaz-de-usarla-El-Puno-Divergente.jpg",
+    "cropPixels": [
+      0,
+      10,
+      300,
+      710
+    ],
+    "mask": "manual silhouette / color-key",
+    "size": [
+      300,
+      700
+    ]
+  },
+  {
+    "asset": "curse.webp",
+    "sourceImage": "https://cdn.shopify.com/s/files/1/0561/3086/3278/files/Suguru_summoning_two_strong_Cursed_Spirits_1.png?v=1640311672",
+    "cropPixels": [
+      173,
+      58,
+      555,
+      300
+    ],
+    "mask": "manual silhouette / color-key",
+    "size": [
+      382,
+      242
+    ]
+  },
+  {
+    "asset": "void.webp",
+    "sourceImage": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/b/ba/Episodio_07_-_210.jpg/revision/latest/scale-to-width-down/1200?cb=20201126155337&path-prefix=es",
+    "cropPixels": null,
+    "mask": "crop",
+    "size": [
+      1200,
+      675
+    ]
+  },
+  {
+    "asset": "shrine.webp",
+    "sourceImage": "https://m.media-amazon.com/images/M/MV5BYTY2YTc4YjEtYmMwNi00MzY4LThjMjctMzRhNGYwNTlmYzM5XkEyXkFqcGc%40._V1_.jpg",
+    "cropPixels": null,
+    "mask": "crop",
+    "size": [
+      1400,
+      788
+    ]
+  },
+  {
+    "asset": "shadow.webp",
+    "sourceImage": "https://animehunch.com/wp-content/uploads/2021/03/Megumi_Nue.jpg",
+    "cropPixels": [
+      0,
+      0,
+      350,
+      500
+    ],
+    "mask": "crop",
+    "size": [
+      350,
+      500
+    ]
+  },
+  {
+    "asset": "mutual.webp",
+    "sourceImage": "https://assets.jabarekspres.com/main/2024/02/jujutsu-kaisen-chapter-249-5.webp",
+    "cropPixels": [
+      0,
+      425,
+      1280,
+      853
+    ],
+    "mask": "crop",
+    "size": [
+      1280,
+      428
+    ]
+  },
+  {
+    "asset": "katana.webp",
+    "sourceImage": "https://assets.jabarekspres.com/main/2024/02/jujutsu-kaisen-chapter-249-5.webp",
+    "cropPixels": [
+      0,
+      0,
+      245,
+      853
+    ],
+    "mask": "manual silhouette / color-key",
+    "size": [
+      154,
+      853
+    ]
+  },
+  {
+    "asset": "block.webp",
+    "sourceImage": "https://m.media-amazon.com/images/M/MV5BM2ZkNjU0YjgtNWUzNi00YjgyLTgyNDgtNGEzYzcxNmE0MmIwXkEyXkFqcGc%40._V1_FMjpg_UX1000_.jpg",
+    "mask": "Manual crossed-forearm silhouette, no generated imagery"
+  }
+]

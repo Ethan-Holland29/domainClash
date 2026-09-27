@@ -1,77 +1,90 @@
-/**
- * CameraManager
- *
- * Owns webcam acquisition and the <video> element that other systems
- * (hand tracking, debug rendering) read frames from. Nothing outside
- * this file should touch getUserMedia directly.
- */
+import { GameConfig } from "../config/GameConfig";
 
-export interface CameraManagerOptions {
-  width?: number;
-  height?: number;
-  facingMode?: "user" | "environment";
+export type CameraErrorKind = "permission" | "unavailable" | "unknown";
+
+export class CameraError extends Error {
+  readonly kind: CameraErrorKind;
+
+  constructor(kind: CameraErrorKind, message: string) {
+    super(message);
+    this.kind = kind;
+  }
 }
 
 export class CameraManager {
-  private videoElement: HTMLVideoElement;
   private stream: MediaStream | null = null;
+  private generation = 0;
+  private readonly video: HTMLVideoElement;
 
-  constructor(videoElement: HTMLVideoElement) {
-    this.videoElement = videoElement;
+  constructor(video: HTMLVideoElement) {
+    this.video = video;
   }
 
-  /**
-   * Requests webcam access and starts streaming into the video element.
-   * Throws on permission denial or unavailable camera so callers can
-   * show an appropriate UI state.
-   */
-  async start(options: CameraManagerOptions = {}): Promise<void> {
-    const { width = 640, height = 480, facingMode = "user" } = options;
-
+  async start(): Promise<void> {
+    if (this.isActive()) return;
+    this.stop();
+    const generation = this.generation;
     if (!navigator.mediaDevices?.getUserMedia) {
-      throw new Error("Webcam access is not supported in this browser.");
+      throw new CameraError("unavailable", "This browser does not support webcam access.");
     }
 
-    this.stop();
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: width }, height: { ideal: height }, facingMode },
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: false,
+        video: {
+          facingMode: GameConfig.camera.facingMode,
+          frameRate: {ideal:24,max:30},
+          width: { ideal: GameConfig.camera.width },
+          height: { ideal: GameConfig.camera.height },
+        },
       });
-      this.videoElement.muted = true;
-      this.videoElement.playsInline = true;
-      await new Promise<void>((resolve, reject) => {
-        const timeout = window.setTimeout(() => finish(new Error("Camera did not provide video within 15 seconds.")), 15000);
-        const finish = (error?: unknown) => {
-          clearTimeout(timeout);
-          this.videoElement.onloadedmetadata = null;
-          this.videoElement.onerror = null;
-          if (error) reject(error); else resolve();
-        };
-        this.videoElement.onloadedmetadata = () => {
-          this.videoElement.play().then(() => finish(), finish);
-        };
-        this.videoElement.onerror = () => finish(new Error("The camera video could not be played."));
-        this.videoElement.srcObject = this.stream;
-      });
+      if (generation !== this.generation) { stream.getTracks().forEach(track => track.stop()); return; }
+      this.stream = stream;
     } catch (error) {
+      throw this.toCameraError(error);
+    }
+
+    this.video.srcObject = this.stream;
+    this.video.muted = true;
+    this.video.playsInline = true;
+    try {
+      await this.video.play();
+    } catch (error) {
+      if(generation!==this.generation)return;
       this.stop();
-      throw error;
+      throw this.toCameraError(error);
     }
   }
 
   stop(): void {
+    this.generation++;
     this.stream?.getTracks().forEach((track) => track.stop());
     this.stream = null;
-    this.videoElement.pause();
-    this.videoElement.srcObject = null;
+    this.video.srcObject = null;
   }
 
-  get isActive(): boolean {
-    return this.stream !== null;
+  isReady(): boolean {
+    return !!this.stream?.getVideoTracks().some(track => track.readyState === "live" && !track.muted)
+      && this.video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && this.video.videoWidth > 0;
   }
 
-  getVideoElement(): HTMLVideoElement {
-    return this.videoElement;
+  isActive(): boolean { return !!this.stream?.getVideoTracks().some(track => track.readyState === 'live'); }
+
+  getVideo(): HTMLVideoElement {
+    return this.video;
+  }
+
+  private toCameraError(error: unknown): CameraError {
+    const name = error instanceof DOMException ? error.name : "";
+    if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+      return new CameraError(
+        "permission",
+        "Camera blocked. Use the browser’s site permissions to allow Camera, then click Enable camera. Check Windows camera privacy settings too.",
+      );
+    }
+    if (name === "NotFoundError" || name === "OverconstrainedError" || name === "NotReadableError") {
+      return new CameraError("unavailable", "Camera unavailable. Close other camera apps and old game tabs, check the camera connection, then retry Enable camera.");
+    }
+    return new CameraError("unknown", "Could not start the webcam.");
   }
 }

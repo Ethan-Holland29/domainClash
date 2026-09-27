@@ -1,0 +1,83 @@
+[
+  {
+    "id": "gojo",
+    "name": "Satoru Gojo",
+    "moves": [
+      "LAPSE_BLUE",
+      "REVERSAL_RED",
+      "UNLIMITED_VOID"
+    ]
+  },
+  {
+    "id": "megumi",
+    "name": "Megumi Fushiguro",
+    "moves": [
+      "DIVINE_DOGS",
+      "NUE",
+      "DOMAIN_EXPANSION"
+    ]
+  },
+  {
+    "id": "sukuna",
+    "name": "Ryomen Sukuna",
+    "moves": [
+      "PRIMARY_ATTACK",
+      "DISMANTLE",
+      "MALEVOLENT_SHRINE"
+    ]
+  },
+  {
+    "id": "choso",
+    "name": "Choso",
+    "moves": [
+      "BASIC_PUNCH",
+      "SECONDARY_ATTACK",
+      "SUPERNOVA"
+    ]
+  },
+  {
+    "id": "ryu",
+    "name": "Ryu Ishigori",
+    "moves": [
+      "BASIC_PUNCH",
+      "GRANITE_BLAST",
+      "RYU_DOMAIN"
+    ]
+  },
+  {
+    "id": "yuji",
+    "name": "Yuji Itadori",
+    "moves": [
+      "BASIC_PUNCH",
+      "BLACK_FLASH",
+      "YUJI_DOMAIN"
+    ]
+  },
+  {
+    "id": "toji",
+    "name": "Toji Fushiguro",
+    "moves": [
+      "BASIC_PUNCH",
+      "SOUL_SPLIT",
+      "HEAVENLY_RUSH"
+    ]
+  },
+  {
+    "id": "geto",
+    "name": "Suguru Geto",
+    "moves": [
+      "CURSE_SWARM",
+      "CURSE_SWALLOW",
+      "UZUMAKI"
+    ]
+  },
+  {
+    "id": "yuta",
+    "name": "Yuta Okkotsu",
+    "moves": [
+      "KATANA",
+      "RIKA",
+      "MUTUAL_LOVE"
+    ]
+  }
+]
