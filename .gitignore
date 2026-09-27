@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.sites-runtime/
+
+.merge-sources/
+.merge-backup/
+.test-build/
+artifacts/
+.publish/
+.tools/

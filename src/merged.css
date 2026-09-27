@@ -1,0 +1,22 @@
+body{background:#030609;color:#e3edfa}
+.toolbar{height:auto;min-height:82px;padding-block:12px;flex-wrap:wrap}
+.toolbar nav{flex-wrap:wrap;justify-content:flex-end}
+.wordmark small span{color:#9ebde2;letter-spacing:1.5px;font-size:10px}
+.technique-dock{gap:12px}
+.technique{background:linear-gradient(125deg,#102039,#070f1d);border-color:#304d71!important;border-left:3px solid var(--move-color)!important}
+.technique small{white-space:normal;line-height:1.5}
+.technique-name{font-family:'JJK','Segoe UI',sans-serif;font-weight:400;letter-spacing:.045em}
+.camera-stage{border-color:#38577d}
+#training-panel{position:fixed;inset:0 0 0 54%;z-index:50;overflow-y:auto;background:#071322f7;padding:28px;border-left:1px solid #486a95;box-shadow:-25px 0 80px #0009}
+#training-panel h1{font-family:'JJK',sans-serif;font-size:32px;color:#b5d9ff;font-weight:400}
+#training-panel p{line-height:1.6;color:#a5bfdc}
+#training-panel button,#training-panel select,#training-panel input{font:inherit;background:#173452;color:#edf6ff;border:1px solid #507ba4;border-radius:4px;padding:9px;margin:4px;max-width:100%}
+#training-panel button:disabled{opacity:.4}
+#training-panel summary{cursor:pointer;font-size:20px;margin-top:20px}
+.dataset-controls,.dataset-actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.dataset-counts{width:100%;border-collapse:collapse;font-size:13px}
+.dataset-counts td,.dataset-counts th{text-align:left;padding:8px;border-bottom:1px solid #2b405c}
+.dataset-status{color:#b6f2d9!important;white-space:pre-wrap}
+.multiplayer-panel>div{border-color:#38577d;background:#081629}
+.mp-health progress{accent-color:#8ccaff}
+@media(max-width:760px){#training-panel{inset:40% 0 0;padding:16px}.toolbar nav{justify-content:flex-start}.technique-name{font-size:19px}#character-screen{inset:0;height:100dvh;overflow-y:auto}.select-heading h1{font-size:24px}}

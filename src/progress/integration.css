@@ -1,0 +1,50 @@
+/* Additive network controls; the supplied progress screen styles stay intact. */
+#online-connect{display:flex;flex-wrap:wrap;align-items:end;gap:8px;margin:12px 0}
+#online-connect label{flex:1;min-width:140px;font-size:.8rem}
+#online-code{display:block;width:100%;padding:9px;background:#081a2d;border:1px solid #456a93;color:#e3edfa;font:inherit}
+.online-fighters{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#online-moves{display:grid;grid-template-columns:1fr;gap:8px}
+#online-room{letter-spacing:.16em;color:#a7d5ff}
+#online-log{padding-left:20px;font-size:.75rem;line-height:1.6}
+#online-message{font-size:.85rem;color:#b4dcff}
+.remote-preview{display:none;position:absolute;inset:0 0 0 50%;border-left:2px solid #365c88;background:#060c18}
+.remote-preview video,.remote-preview canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transform:none}
+.remote-preview span{position:absolute;inset:auto 0 12px;text-align:center;font-size:11px;color:#bdd6ee}
+.stage.network-camera #webcam,.stage.network-camera #overlay{width:50%}
+.stage.network-camera .remote-preview{display:block}
+#camera-status{font-size:.75rem;color:#adcce9;margin:0}
+.topbar a[aria-disabled="true"]{opacity:.4;pointer-events:none}
+@media(max-width:760px){.online-fighters{grid-template-columns:1fr 1fr}}
+/* Effect pixels are separate from the sharp webcam and original hand identifiers. */
+.character-effects{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;contain:strict}
+#overlay{z-index:3;pointer-events:none}
+body:not(.debug-on) #overlay{visibility:hidden}
+#original-debug{max-height:30vh;overflow:auto;background:#080e19;border:1px solid #3b657e;padding:8px;font-size:12px;flex-shrink:0}
+#original-debug[hidden]{display:none}
+#original-debug .debug-hud,#original-debug .gesture-debug{position:static;white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.55 ui-monospace,monospace;color:#d3e9ec;padding:8px}
+#original-debug summary{color:#b5e7e2}
+.effect-previews{display:flex;flex-wrap:wrap;gap:8px;padding:8px}
+.effect-previews label{min-width:0}.effect-previews select{max-width:100%}
+.original-dataset{margin-top:20px;border-top:1px solid #527187;padding-top:12px}
+.dataset-row{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}.dataset-counts,.dataset-status{white-space:pre-wrap;font-size:12px}
+.logo-cursor{left:0;top:0;will-change:transform}
+@media(max-width:900px){.topbar{gap:8px;flex-wrap:wrap}.topbar details{margin-left:0}}
+#app[data-mode='posture'] #overlay{visibility:visible}
+.posture-progress{padding:18px 14px;margin:16px 0;border:1px solid #638099;background:#102237;color:#d6e9f5;font-weight:700}
+.posture-progress.trusted{border-color:#71d6ac;background:#123b2e;color:#a8f3cc}
+.dataset-count{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid #ffffff16;font-size:12px}
+.dataset-count.trusted{color:#a8f3cc}.dataset-count.total{font-weight:800}
+.dataset-status{padding:12px 0;color:#c2e4ef;min-height:3em}
+.dataset-status.error{color:#ffabab}
+.saved-postures{margin:12px 0}.saved-postures .dataset-counts{max-height:240px;overflow:auto}
+#posture .dataset-row select{flex:1;min-width:160px}
+#posture [data-action='record']{border-color:#93cbb9;background:#215044;font-weight:700}
+
+/* The combat viewport follows the window; opening debug no longer crushes the effects. */
+#app { max-width:none; }
+#app[data-mode="combat"]:not(.online-fight) .workspace { grid-template-columns:minmax(0,1.6fr) minmax(330px,.8fr); }
+.camera-column .stage { min-height:clamp(280px,48dvh,760px); }
+@media(max-width:760px){
+ #app[data-mode="combat"]:not(.online-fight) .workspace {grid-template-columns:minmax(0,1fr);}
+ #app:not(.online-fight) .camera-column .stage {height:52dvh;min-height:280px;flex:none;}
+}

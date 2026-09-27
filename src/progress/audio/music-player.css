@@ -1,0 +1,56 @@
+.jjk-music-player {
+  position: static;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: min(430px, 100%);
+  min-width: 0;
+  min-height: 40px;
+  padding: 4px 10px;
+  border: 1px solid #ffffff12;
+  border-radius: 4px;
+  background: #111;
+  color: #ededed;
+  box-shadow: 0 4px 18px #0008;
+  font-family: system-ui, sans-serif;
+}
+.jjk-music-icon { flex: 0 0 auto; color: #c9d3dc; font-size: 1.05rem; }
+.jjk-music-info { flex: 1 1 auto; min-width: 0; overflow: hidden; }
+.jjk-music-track { display: block; overflow: hidden; color: #f2f2f2; font-size: .82rem; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.jjk-music-status { display: block; overflow: hidden; margin-top: 1px; color: #999; font-size: .6rem; text-overflow: ellipsis; white-space: nowrap; }
+.jjk-music-controls { display: flex; flex: 0 0 auto; align-items: center; gap: 15px; }
+.jjk-music-controls button {
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #c7c7c7;
+  font: 600 .88rem system-ui,sans-serif;
+  cursor: pointer;
+}
+.jjk-music-controls .jjk-music-play { color: #fff; font-size: .98rem; }
+.jjk-music-controls button:hover:not(:disabled) { color: #91cfff; }
+.jjk-music-controls button:disabled { opacity: .36; cursor: default; }
+.jjk-music-volume { display:flex; align-items:center; gap:5px; color:#c7c7c7; cursor:pointer; }
+.jjk-music-volume-slider { width:76px; height:20px; margin:0; accent-color:#91cfff; cursor:pointer; }
+.jjk-music-player[data-playing="true"] .jjk-music-icon { color: #8dd8ad; }
+.jjk-music-player:focus-within { border-color: #7eb5d8; }
+.selection-footer:has(.jjk-music-player) { flex-wrap:wrap; }
+.selection-footer > span { flex:1 1 180px; min-width:0; }
+.selection-footer .jjk-music-player { flex:0 1 360px; width:min(360px,100%); min-width:270px; box-shadow:none; }
+.selection-footer:has(.jjk-music-player) > button { flex:none; }
+#fight-music-slot,#online-music-slot { margin-top:12px; }
+#fight-music-slot .jjk-music-player,#online-music-slot .jjk-music-player { width:min(430px,100%); }
+.room-form .jjk-music-player { margin:14px 0 4px; }
+.panel-area > .jjk-music-player { margin-top:14px; }
+@media(max-width:520px) {
+  .jjk-music-player { width:100%; gap:7px; padding-inline:8px; }
+  .selection-footer .jjk-music-player { flex:1 1 100%; min-width:0; }
+  .jjk-music-controls { gap: 10px; }
+  .jjk-music-volume-slider { width:58px; }
+  .jjk-music-track { font-size: .75rem; }
+}
+@media(prefers-reduced-motion:reduce) { .jjk-music-player * { scroll-behavior:auto; } }
